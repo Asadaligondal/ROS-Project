@@ -1,0 +1,5 @@
+  File "/home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/dqn_node.py", line 24
+    x = self.fc Emile(x)
+                ^^^^^
+SyntaxError: invalid syntax
+

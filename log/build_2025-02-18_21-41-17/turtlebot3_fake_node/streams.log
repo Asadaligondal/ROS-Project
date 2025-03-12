@@ -1,0 +1,75 @@
+[0.046s] Invoking command in '/home/asad/turtlebot0/build/turtlebot3_fake_node': /usr/bin/cmake /home/asad/turtlebot0/src/turtlebot3_simulations/turtlebot3_fake_node -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/asad/turtlebot0/install/turtlebot3_fake_node
+[0.165s] -- The C compiler identification is GNU 11.4.0
+[0.300s] -- The CXX compiler identification is GNU 11.4.0
+[0.317s] -- Detecting C compiler ABI info
+[0.460s] -- Detecting C compiler ABI info - done
+[0.493s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.494s] -- Detecting C compile features
+[0.496s] -- Detecting C compile features - done
+[0.506s] -- Detecting CXX compiler ABI info
+[0.699s] -- Detecting CXX compiler ABI info - done
+[0.733s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.734s] -- Detecting CXX compile features
+[0.735s] -- Detecting CXX compile features - done
+[0.740s] -- Found ament_cmake: 1.3.11 (/opt/ros/humble/share/ament_cmake/cmake)
+[1.165s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[1.360s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[1.429s] -- Found geometry_msgs: 4.2.4 (/opt/ros/humble/share/geometry_msgs/cmake)
+[1.510s] -- Found rosidl_generator_c: 3.1.6 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[1.520s] -- Found rosidl_adapter: 3.1.6 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[1.542s] -- Found rosidl_generator_cpp: 3.1.6 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[1.581s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[1.617s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[1.722s] -- Found nav_msgs: 4.2.4 (/opt/ros/humble/share/nav_msgs/cmake)
+[1.771s] -- Found rclcpp: 16.0.11 (/opt/ros/humble/share/rclcpp/cmake)
+[1.852s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[1.857s] -- Found rmw_fastrtps_cpp: 6.2.7 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[2.037s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  
+[2.095s] -- Found FastRTPS: /opt/ros/humble/include  
+[2.182s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[2.199s] -- Looking for pthread.h
+[2.385s] -- Looking for pthread.h - found
+[2.386s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[2.570s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[2.573s] -- Found Threads: TRUE  
+[2.664s] -- Found sensor_msgs: 4.2.4 (/opt/ros/humble/share/sensor_msgs/cmake)
+[2.706s] -- Found tf2: 0.25.12 (/opt/ros/humble/share/tf2/cmake)
+[2.727s] -- Found tf2_msgs: 0.25.12 (/opt/ros/humble/share/tf2_msgs/cmake)
+[2.826s] -- Found turtlebot3_msgs: 2.2.3 (/opt/ros/humble/share/turtlebot3_msgs/cmake)
+[3.033s] -- Configuring done
+[3.071s] -- Generating done
+[3.082s] -- Build files have been written to: /home/asad/turtlebot0/build/turtlebot3_fake_node
+[3.106s] Invoked command in '/home/asad/turtlebot0/build/turtlebot3_fake_node' returned '0': /usr/bin/cmake /home/asad/turtlebot0/src/turtlebot3_simulations/turtlebot3_fake_node -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/asad/turtlebot0/install/turtlebot3_fake_node
+[3.111s] Invoking command in '/home/asad/turtlebot0/build/turtlebot3_fake_node': /usr/bin/cmake --build /home/asad/turtlebot0/build/turtlebot3_fake_node -- -j4 -l4
+[3.208s] [ 50%] [32mBuilding CXX object CMakeFiles/turtlebot3_fake_node.dir/src/turtlebot3_fake_node.cpp.o[0m
+[43.037s] [100%] [32m[1mLinking CXX executable turtlebot3_fake_node[0m
+[46.257s] [100%] Built target turtlebot3_fake_node
+[46.314s] Invoked command in '/home/asad/turtlebot0/build/turtlebot3_fake_node' returned '0': /usr/bin/cmake --build /home/asad/turtlebot0/build/turtlebot3_fake_node -- -j4 -l4
+[46.383s] Invoking command in '/home/asad/turtlebot0/build/turtlebot3_fake_node': /usr/bin/cmake --install /home/asad/turtlebot0/build/turtlebot3_fake_node
+[46.418s] -- Install configuration: ""
+[46.423s] -- Execute custom install script
+[46.424s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/lib/turtlebot3_fake_node/turtlebot3_fake_node
+[46.460s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/launch/rviz2.launch.py
+[46.511s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/launch/turtlebot3_fake_node.launch.py
+[46.554s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/param/burger.yaml
+[46.585s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/param/waffle.yaml
+[46.607s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/param/waffle_pi.yaml
+[46.642s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/include//turtlebot3_fake_node/turtlebot3_fake_node.hpp
+[46.704s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/ament_index/resource_index/package_run_dependencies/turtlebot3_fake_node
+[46.756s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/ament_index/resource_index/parent_prefix_path/turtlebot3_fake_node
+[46.812s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/environment/ament_prefix_path.sh
+[46.862s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/environment/ament_prefix_path.dsv
+[46.932s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/environment/path.sh
+[46.985s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/environment/path.dsv
+[47.042s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/local_setup.bash
+[47.105s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/local_setup.sh
+[47.196s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/local_setup.zsh
+[47.255s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/local_setup.dsv
+[47.297s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/package.dsv
+[47.352s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/ament_index/resource_index/packages/turtlebot3_fake_node
+[47.406s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/cmake/ament_cmake_export_include_directories-extras.cmake
+[47.446s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/cmake/ament_cmake_export_dependencies-extras.cmake
+[47.498s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/cmake/turtlebot3_fake_nodeConfig.cmake
+[47.550s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/cmake/turtlebot3_fake_nodeConfig-version.cmake
+[47.600s] -- Symlinking: /home/asad/turtlebot0/install/turtlebot3_fake_node/share/turtlebot3_fake_node/package.xml
+[47.666s] Invoked command in '/home/asad/turtlebot0/build/turtlebot3_fake_node' returned '0': /usr/bin/cmake --install /home/asad/turtlebot0/build/turtlebot3_fake_node

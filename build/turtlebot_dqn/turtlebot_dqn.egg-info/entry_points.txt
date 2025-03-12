@@ -1,0 +1,4 @@
+[console_scripts]
+bumper_reset_node = turtlebot_dqn.bumper_reset_node:main
+dqn_node = turtlebot_dqn.dqn_node:main
+
