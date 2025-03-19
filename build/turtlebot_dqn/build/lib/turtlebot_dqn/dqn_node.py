@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import random
 import os
+import matplotlib.pyplot as plt
 
 class DQNNetwork(nn.Module):
     def __init__(self, input_size, output_size):
@@ -31,7 +32,7 @@ class DQNNode(Node):
         self.lidar_sub = self.create_subscription(
             LaserScan, '/scan', self.lidar_callback, 10)
         self.bumper_sub = self.create_subscription(
-            ContactsState, '/bumper_states', self.bumper_callback, 10)  # Changed to /bumper_states
+            ContactsState, '/bumper_states', self.bumper_callback, 10)
         self.vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.reset_client = self.create_client(Empty, '/reset_world')
         while not self.reset_client.wait_for_service(timeout_sec=1.0):
@@ -52,14 +53,25 @@ class DQNNode(Node):
         ]
         # Episode tracking
         self.max_episodes = 100
-        self.max_steps = 100
+        self.max_steps = 300
         self.episode = 0
         self.step = 0
         self.total_reward = 0.0
         self.current_state = None
-        random.seed()  # Ensure random actions
-        self.get_logger().info('DQN Node started - Listening to /bumper_states')
-        self.stop_robot()  # Stop any initial movement
+        # Data storage for plotting
+        self.episode_steps = []
+        self.episode_rewards = []
+        random.seed()
+        self.stop_robot()
+
+        # Matplotlib setup
+        plt.ion()  # Enable interactive mode for non-blocking plotting
+        self.fig, self.ax1 = plt.subplots()
+        self.ax2 = self.ax1.twinx()  # Dual y-axis
+        self.update_plot()  # Initial empty plot
+
+        # ROS2 timer to keep plot responsive
+        self.plot_timer = self.create_timer(0.1, self.plot_callback)  # 10 Hz to process GUI events
 
     def stop_robot(self):
         """Publish zero velocity to stop the robot."""
@@ -67,7 +79,6 @@ class DQNNode(Node):
         twist.linear.x = 0.0
         twist.angular.z = 0.0
         self.vel_pub.publish(twist)
-        self.get_logger().info('Published stop command to /cmd_vel')
 
     def preprocess_lidar(self, ranges):
         sector_size = len(ranges) // 8
@@ -95,6 +106,11 @@ class DQNNode(Node):
 
     def reset_episode(self):
         self.get_logger().info(f'Episode {self.episode} completed - Steps: {self.step}, Total Reward: {self.total_reward}')
+        # Store data for plotting
+        self.episode_steps.append(self.step)
+        self.episode_rewards.append(self.total_reward)
+        self.update_plot()  # Refresh plot after each episode
+        
         self.episode += 1
         self.step = 0
         self.total_reward = 0.0
@@ -113,7 +129,7 @@ class DQNNode(Node):
         try:
             future.result()
             self.get_logger().info('World reset successful')
-            self.stop_robot()  # Stop movement after reset
+            self.stop_robot()
         except Exception as e:
             self.get_logger().error(f'World reset failed: {e}')
 
@@ -121,6 +137,34 @@ class DQNNode(Node):
         model_path = os.path.expanduser('~/turtlebot0/dqn_model.pth')
         torch.save(self.dqn.state_dict(), model_path)
         self.get_logger().info(f'Model saved to {model_path}')
+        
+        # Save final plot
+        plot_path = os.path.expanduser('~/turtlebot0/dqn_training_plot.png')
+        self.update_plot()  # Ensure final data is plotted
+        self.fig.savefig(plot_path)
+        self.get_logger().info(f'Final plot saved to {plot_path}')
+        plt.close(self.fig)
+
+    def update_plot(self):
+        self.ax1.clear()
+        self.ax2.clear()
+        episodes = list(range(len(self.episode_steps)))
+        if episodes:
+            self.ax1.plot(episodes, self.episode_steps, 'b-', label='Steps')
+            self.ax2.plot(episodes, self.episode_rewards, 'r-', label='Reward')
+            self.ax1.set_xlabel('Episode')
+            self.ax1.set_ylabel('Steps', color='b')
+            self.ax2.set_ylabel('Reward', color='r')
+            self.ax1.tick_params(axis='y', labelcolor='b')
+            self.ax2.tick_params(axis='y', labelcolor='r')
+            self.fig.legend(loc='upper left')
+            self.fig.tight_layout()
+        plt.draw()  # Redraw the plot
+        plt.pause(0.001)  # Brief pause to update GUI
+
+    def plot_callback(self):
+        # Keep the matplotlib event loop alive
+        plt.pause(0.001)  # Process GUI events without blocking
 
     def lidar_callback(self, msg):
         if self.episode >= self.max_episodes:
@@ -148,7 +192,6 @@ class DQNNode(Node):
         if self.episode >= self.max_episodes:
             return
         
-        self.get_logger().info(f'Bumper message received - States: {len(msg.states)}')
         if len(msg.states) > 0:
             self.get_logger().info(f'Collision detected at episode {self.episode}, step {self.step}')
             self.total_reward -= 100.0
@@ -157,7 +200,7 @@ class DQNNode(Node):
 def main():
     rclpy.init()
     node = DQNNode()
-    rclpy.spin(node)
+    rclpy.spin(node)  # Run ROS2 loop without blocking for plt.show()
     rclpy.shutdown()
 
 if __name__ == '__main__':
