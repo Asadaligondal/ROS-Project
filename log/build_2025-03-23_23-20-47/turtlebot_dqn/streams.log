@@ -1,0 +1,16 @@
+[1.690s] Invoking command in '/home/asad/turtlebot0/src/turtlebot_dqn': PYTHONPATH=/home/asad/turtlebot0/build/turtlebot_dqn/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/turtlebot_dqn build --build-base /home/asad/turtlebot0/build/turtlebot_dqn/build install --record /home/asad/turtlebot0/build/turtlebot_dqn/install.log --single-version-externally-managed install_data
+[2.231s] running egg_info
+[2.232s] writing ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/PKG-INFO
+[2.233s] writing dependency_links to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/dependency_links.txt
+[2.233s] writing entry points to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/entry_points.txt
+[2.234s] writing requirements to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/requires.txt
+[2.234s] writing top-level names to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/top_level.txt
+[2.240s] reading manifest file '../../build/turtlebot_dqn/turtlebot_dqn.egg-info/SOURCES.txt'
+[2.243s] writing manifest file '../../build/turtlebot_dqn/turtlebot_dqn.egg-info/SOURCES.txt'
+[2.243s] running build
+[2.243s] running build_py
+[2.244s] running install
+[2.245s] running install_lib
+[2.249s] running install_data
+[2.249s] error: can't copy 'launch/dqn_test.launch.py ': doesn't exist or not a regular file
+[2.291s] Invoked command in '/home/asad/turtlebot0/src/turtlebot_dqn' returned '1': PYTHONPATH=/home/asad/turtlebot0/build/turtlebot_dqn/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/turtlebot_dqn build --build-base /home/asad/turtlebot0/build/turtlebot_dqn/build install --record /home/asad/turtlebot0/build/turtlebot_dqn/install.log --single-version-externally-managed install_data

@@ -1,0 +1,17 @@
+running egg_info
+writing ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/PKG-INFO
+writing dependency_links to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/dependency_links.txt
+writing entry points to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/entry_points.txt
+writing requirements to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/requires.txt
+writing top-level names to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/top_level.txt
+reading manifest file '../../build/turtlebot_dqn/turtlebot_dqn.egg-info/SOURCES.txt'
+writing manifest file '../../build/turtlebot_dqn/turtlebot_dqn.egg-info/SOURCES.txt'
+running build
+running build_py
+copying turtlebot_dqn/goal_publisher.py -> /home/asad/turtlebot0/build/turtlebot_dqn/build/lib/turtlebot_dqn
+running install
+running install_lib
+copying /home/asad/turtlebot0/build/turtlebot_dqn/build/lib/turtlebot_dqn/goal_publisher.py -> /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn
+byte-compiling /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/goal_publisher.py to goal_publisher.cpython-310.pyc
+running install_data
+error: can't copy 'launch/goal_publisher.py': doesn't exist or not a regular file

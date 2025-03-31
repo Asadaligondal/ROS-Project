@@ -2,14 +2,15 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist
-from gazebo_msgs.msg import ContactsState
-from std_srvs.srv import Empty
+from geometry_msgs.msg import Twist, Pose
+from gazebo_msgs.msg import ContactsState, EntityState
+from gazebo_msgs.srv import SetEntityState
 import numpy as np
 import torch
 import torch.nn as nn
 import random
 import os
+import math
 import matplotlib.pyplot as plt
 
 class DQNNetwork(nn.Module):
@@ -34,9 +35,10 @@ class DQNNode(Node):
         self.bumper_sub = self.create_subscription(
             ContactsState, '/bumper_states', self.bumper_callback, 10)
         self.vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.reset_client = self.create_client(Empty, '/reset_world')
-        while not self.reset_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Waiting for /reset_world service...')
+        # Setup entity state client for position reset
+        self.set_entity_client = self.create_client(SetEntityState, '/gazebo/set_entity_state')
+        while not self.set_entity_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Waiting for /gazebo/set_entity_state service...')
         
         # DQN setup
         self.state_size = 8
@@ -94,14 +96,12 @@ class DQNNode(Node):
     def choose_action(self, state):
         if random.random() < self.epsilon:
             action = random.randint(0, self.action_size - 1)
-            self.get_logger().info(f'Random action chosen: {action}')
             return action
         else:
             with torch.no_grad():
                 state_tensor = torch.from_numpy(state).float()
                 q_values = self.dqn(state_tensor)
                 action = q_values.argmax().item()
-                self.get_logger().info(f'Q-value action chosen: {action}')
                 return action
 
     def reset_episode(self):
@@ -115,23 +115,57 @@ class DQNNode(Node):
         self.step = 0
         self.total_reward = 0.0
         
-        # Reset world
-        request = Empty.Request()
-        future = self.reset_client.call_async(request)
-        future.add_done_callback(self.reset_callback)
+        # Reset robot position
+        self.reset_robot_position()
         
         if self.episode >= self.max_episodes:
             self.save_model()
             self.get_logger().info('Training completed, shutting down...')
             rclpy.shutdown()
-
-    def reset_callback(self, future):
+    
+    def reset_robot_position(self):
+        """Reset the robot to a random starting position"""
+        # Generate random position within arena bounds
+        x = random.uniform(-2.0, 2.0)
+        y = random.uniform(-2.0, 2.0)
+        z = 0.0
+        yaw = random.uniform(-math.pi, math.pi)
+        
+        request = SetEntityState.Request()
+        request.state = EntityState()
+        request.state.name = 'burger'  # Your robot model name in Gazebo
+        
+        # Set position
+        request.state.pose = Pose()
+        request.state.pose.position.x = x
+        request.state.pose.position.y = y
+        request.state.pose.position.z = z
+        
+        # Set orientation (yaw only)
+        cy = math.cos(yaw * 0.5)
+        sy = math.sin(yaw * 0.5)
+        request.state.pose.orientation.w = cy
+        request.state.pose.orientation.x = 0.0
+        request.state.pose.orientation.y = 0.0
+        request.state.pose.orientation.z = sy
+        
+        # Zero velocity
+        request.state.twist = Twist()
+        
+        # Call service
+        future = self.set_entity_client.call_async(request)
+        future.add_done_callback(self.position_reset_callback)
+    
+    def position_reset_callback(self, future):
+        """Callback after position reset"""
         try:
-            future.result()
-            self.get_logger().info('World reset successful')
-            self.stop_robot()
+            response = future.result()
+            if not response.success:
+                self.get_logger().error('Failed to reset robot position')
+            else:
+                self.stop_robot()
         except Exception as e:
-            self.get_logger().error(f'World reset failed: {e}')
+            self.get_logger().error(f'Robot position reset failed: {e}')
 
     def save_model(self):
         model_path = os.path.expanduser('~/turtlebot0/dqn_model.pth')
@@ -184,8 +218,12 @@ class DQNNode(Node):
         self.total_reward += 1.0
         self.step += 1
         
+        # Print episode progress every 50 steps
+        if self.step % 50 == 0:
+            self.get_logger().info(f'Episode {self.episode}: Step {self.step}, Current reward: {self.total_reward}')
+        
         if self.step >= self.max_steps:
-            self.get_logger().info(f'Max steps reached at episode {self.episode}')
+            self.get_logger().info(f'Episode {self.episode}: Max steps reached')
             self.reset_episode()
 
     def bumper_callback(self, msg):
@@ -193,9 +231,27 @@ class DQNNode(Node):
             return
         
         if len(msg.states) > 0:
-            self.get_logger().info(f'Collision detected at episode {self.episode}, step {self.step}')
+            self.get_logger().info(f'Episode {self.episode}: Collision detected at step {self.step}')
             self.total_reward -= 100.0
-            self.reset_episode()
+            
+            # Store data for plotting before reset
+            self.episode_steps.append(self.step)
+            self.episode_rewards.append(self.total_reward)
+            self.update_plot()
+            
+            # Increment episode counter
+            self.episode += 1
+            self.step = 0
+            self.total_reward = 0.0
+            
+            # Check if training is complete
+            if self.episode >= self.max_episodes:
+                self.save_model()
+                self.get_logger().info('Training completed, shutting down...')
+                rclpy.shutdown()
+            else:
+                # Reset robot position to start new episode
+                self.reset_robot_position()
 
 def main():
     rclpy.init()

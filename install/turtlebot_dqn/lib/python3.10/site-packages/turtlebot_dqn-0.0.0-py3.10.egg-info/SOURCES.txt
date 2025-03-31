@@ -16,3 +16,4 @@ test/test_pep257.py
 turtlebot_dqn/__init__.py
 turtlebot_dqn/bumper_reset_node.py
 turtlebot_dqn/dqn_node.py
+turtlebot_dqn/goal_publisher.py

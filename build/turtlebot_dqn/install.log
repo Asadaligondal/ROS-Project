@@ -1,7 +1,9 @@
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/dqn_node.py
+/home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/goal_publisher.py
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/bumper_reset_node.py
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/__init__.py
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/__pycache__/dqn_node.cpython-310.pyc
+/home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/__pycache__/goal_publisher.cpython-310.pyc
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/__pycache__/bumper_reset_node.cpython-310.pyc
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/__pycache__/__init__.cpython-310.pyc
 /home/asad/turtlebot0/install/turtlebot_dqn/share/ament_index/resource_index/packages/turtlebot_dqn
@@ -16,3 +18,4 @@
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn-0.0.0-py3.10.egg-info/requires.txt
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/turtlebot_dqn/bumper_reset_node
 /home/asad/turtlebot0/install/turtlebot_dqn/lib/turtlebot_dqn/dqn_node
+/home/asad/turtlebot0/install/turtlebot_dqn/lib/turtlebot_dqn/goal_publisher

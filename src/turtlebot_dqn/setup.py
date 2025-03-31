@@ -15,6 +15,7 @@ setup(
     ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
     ('share/' + package_name, ['package.xml']),
     ('share/' + package_name + '/launch', ['launch/dqn_test.launch.py']),
+    # ('share/' + package_name + '/launch', ['launch/goal_publisher.py']),
 ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -26,6 +27,7 @@ setup(
     entry_points={
         'console_scripts': ['dqn_node = turtlebot_dqn.dqn_node:main',
                             'bumper_reset_node = turtlebot_dqn.bumper_reset_node:main',
+                            'goal_publisher = turtlebot_dqn.goal_publisher:main',
         ],
     },
 )
