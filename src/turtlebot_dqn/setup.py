@@ -28,6 +28,7 @@ setup(
         'console_scripts': ['dqn_node = turtlebot_dqn.dqn_node:main',
                             'bumper_reset_node = turtlebot_dqn.bumper_reset_node:main',
                             'goal_publisher = turtlebot_dqn.goal_publisher:main',
+                            'custom_model = turtlebot_dqn.dqn_node:main',
         ],
     },
 )

@@ -105,11 +105,11 @@ class DQNNode(Node):
                 return action
 
     def reset_episode(self):
-        self.get_logger().info(f'Episode {self.episode} completed - Steps: {self.step}, Total Reward: {self.total_reward}')
+        # self.get_logger().info(f'Episode {self.episode} completed - Steps: {self.step}, Total Reward: {self.total_reward}')
         # Store data for plotting
         self.episode_steps.append(self.step)
         self.episode_rewards.append(self.total_reward)
-        self.update_plot()  # Refresh plot after each episode
+        # self.update_plot()  # Refresh plot after each episode
         
         self.episode += 1
         self.step = 0
