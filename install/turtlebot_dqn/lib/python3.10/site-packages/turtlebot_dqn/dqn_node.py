@@ -96,7 +96,7 @@ class DQNNode(Node):
     def choose_action(self, state):
         if random.random() < self.epsilon:
             action = random.randint(0, self.action_size - 1)
-            return action
+            return action ## here the value of epsilon is not decreasing, but it should
         else:
             with torch.no_grad():
                 state_tensor = torch.from_numpy(state).float()
@@ -116,7 +116,7 @@ class DQNNode(Node):
         self.total_reward = 0.0
         
         # Reset robot position
-        self.reset_robot_position()
+        self.reset_robot_position() # here later we might add the random position of goal too
         
         if self.episode >= self.max_episodes:
             self.save_model()

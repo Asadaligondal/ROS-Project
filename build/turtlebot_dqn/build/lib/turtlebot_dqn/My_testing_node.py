@@ -26,15 +26,16 @@ class DQNNetwork(nn.Module):
         x = self.fc3(x)
         return x
 
-class DQNNode(Node):
+class DQNTestNode(Node):
     def __init__(self):
-        super().__init__('dqn_node')
+        super().__init__('dqn_test_node')
         # ROS2 setup
         self.lidar_sub = self.create_subscription(
             LaserScan, '/scan', self.lidar_callback, 10)
         self.bumper_sub = self.create_subscription(
             ContactsState, '/bumper_states', self.bumper_callback, 10)
         self.vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        
         # Setup entity state client for position reset
         self.set_entity_client = self.create_client(SetEntityState, '/gazebo/set_entity_state')
         while not self.set_entity_client.wait_for_service(timeout_sec=1.0):
@@ -44,22 +45,33 @@ class DQNNode(Node):
         self.state_size = 8
         self.action_size = 4
         self.dqn = DQNNetwork(self.state_size, self.action_size)
-        self.epsilon = 1.0
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        
+        # Load pre-trained model
+        model_path = os.path.expanduser('~/turtlebot0/dqn_model.pth')
+        if os.path.exists(model_path):
+            self.dqn.load_state_dict(torch.load(model_path))
+            self.get_logger().info(f'Model loaded from {model_path}')
+            self.dqn.eval()  # Set to evaluation mode
+        else:
+            self.get_logger().error(f'Model file not found at {model_path}')
+            rclpy.shutdown()
+            return
+        
         self.actions = [
             (0.1, 0.0),  # Forward
             (0.0, 0.5),  # Left
             (0.0, -0.5), # Right
             (0.0, 0.0)   # Stop
         ]
+        
         # Episode tracking
-        self.max_episodes = 100
+        self.max_episodes = 50  # Test for fewer episodes than training
         self.max_steps = 300
         self.episode = 0
         self.step = 0
         self.total_reward = 0.0
         self.current_state = None
+        
         # Data storage for plotting
         self.episode_steps = []
         self.episode_rewards = []
@@ -74,7 +86,9 @@ class DQNNode(Node):
 
         # ROS2 timer to keep plot responsive
         self.plot_timer = self.create_timer(0.1, self.plot_callback)  # 10 Hz to process GUI events
-
+        
+        self.get_logger().info('DQN test node initialized - starting testing...')
+        
     def stop_robot(self):
         """Publish zero velocity to stop the robot."""
         twist = Twist()
@@ -83,6 +97,7 @@ class DQNNode(Node):
         self.vel_pub.publish(twist)
 
     def preprocess_lidar(self, ranges):
+        """Process lidar data exactly the same as in training"""
         sector_size = len(ranges) // 8
         sectors = []
         for i in range(8):
@@ -94,33 +109,30 @@ class DQNNode(Node):
         return np.array(sectors, dtype=np.float32)
 
     def choose_action(self, state):
-        if random.random() < self.epsilon:
-            action = random.randint(0, self.action_size - 1)
-            return action ## here the value of epsilon is not decreasing, but it should
-        else:
-            with torch.no_grad():
-                state_tensor = torch.from_numpy(state).float()
-                q_values = self.dqn(state_tensor)
-                action = q_values.argmax().item()
-                return action
+        """Choose action based on the trained model (no exploration)"""
+        with torch.no_grad():
+            state_tensor = torch.from_numpy(state).float()
+            q_values = self.dqn(state_tensor)
+            action = q_values.argmax().item()
+            return action
 
     def reset_episode(self):
-        # self.get_logger().info(f'Episode {self.episode} completed - Steps: {self.step}, Total Reward: {self.total_reward}')
+        self.get_logger().info(f'Episode {self.episode} completed - Steps: {self.step}, Total Reward: {self.total_reward}')
         # Store data for plotting
         self.episode_steps.append(self.step)
         self.episode_rewards.append(self.total_reward)
-        # self.update_plot()  # Refresh plot after each episode
+        self.update_plot()  # Refresh plot after each episode
         
         self.episode += 1
         self.step = 0
         self.total_reward = 0.0
         
         # Reset robot position
-        self.reset_robot_position() # here later we might add the random position of goal too
+        self.reset_robot_position()
         
         if self.episode >= self.max_episodes:
-            self.save_model()
-            self.get_logger().info('Training completed, shutting down...')
+            self.save_results()
+            self.get_logger().info('Testing completed, shutting down...')
             rclpy.shutdown()
     
     def reset_robot_position(self):
@@ -167,19 +179,28 @@ class DQNNode(Node):
         except Exception as e:
             self.get_logger().error(f'Robot position reset failed: {e}')
 
-    def save_model(self):
-        model_path = os.path.expanduser('~/turtlebot0/dqn_model.pth')
-        torch.save(self.dqn.state_dict(), model_path)
-        self.get_logger().info(f'Model saved to {model_path}')
-        
+    def save_results(self):
+        """Save testing results"""
         # Save final plot
-        plot_path = os.path.expanduser('~/turtlebot0/dqn_training_plot.png')
+        plot_path = os.path.expanduser('~/turtlebot0/dqn_testing_plot.png')
         self.update_plot()  # Ensure final data is plotted
         self.fig.savefig(plot_path)
-        self.get_logger().info(f'Final plot saved to {plot_path}')
+        self.get_logger().info(f'Testing plot saved to {plot_path}')
+        
+        # Save data as CSV for further analysis
+        import csv
+        csv_path = os.path.expanduser('~/turtlebot0/dqn_testing_results.csv')
+        with open(csv_path, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['Episode', 'Steps', 'Reward'])
+            for i in range(len(self.episode_steps)):
+                writer.writerow([i, self.episode_steps[i], self.episode_rewards[i]])
+        self.get_logger().info(f'Testing data saved to {csv_path}')
+        
         plt.close(self.fig)
 
     def update_plot(self):
+        """Update the matplotlib plot with current data"""
         self.ax1.clear()
         self.ax2.clear()
         episodes = list(range(len(self.episode_steps)))
@@ -193,14 +214,16 @@ class DQNNode(Node):
             self.ax2.tick_params(axis='y', labelcolor='r')
             self.fig.legend(loc='upper left')
             self.fig.tight_layout()
+            self.ax1.set_title('DQN Testing Performance')
         plt.draw()  # Redraw the plot
         plt.pause(0.001)  # Brief pause to update GUI
 
     def plot_callback(self):
-        # Keep the matplotlib event loop alive
+        """Keep the matplotlib event loop alive"""
         plt.pause(0.001)  # Process GUI events without blocking
 
     def lidar_callback(self, msg):
+        """Process lidar data and control the robot"""
         if self.episode >= self.max_episodes:
             return
         
@@ -214,7 +237,7 @@ class DQNNode(Node):
         twist.angular.z = angular_z
         self.vel_pub.publish(twist)
         
-        # Reward: +1 per step
+        # Reward: +1 per step (same as training)
         self.total_reward += 1.0
         self.step += 1
         
@@ -227,14 +250,15 @@ class DQNNode(Node):
             self.reset_episode()
 
     def bumper_callback(self, msg):
+        """Handle collisions"""
         if self.episode >= self.max_episodes:
             return
         
         if len(msg.states) > 0:
             self.get_logger().info(f'Episode {self.episode}: Collision detected at step {self.step}')
-            self.total_reward -= 100.0
+            self.total_reward -= 100.0  # Same penalty as in training
             
-            # Store data for plotting before reset
+            # Store data for plotting
             self.episode_steps.append(self.step)
             self.episode_rewards.append(self.total_reward)
             self.update_plot()
@@ -244,10 +268,10 @@ class DQNNode(Node):
             self.step = 0
             self.total_reward = 0.0
             
-            # Check if training is complete
+            # Check if testing is complete
             if self.episode >= self.max_episodes:
-                self.save_model()
-                self.get_logger().info('Training completed, shutting down...')
+                self.save_results()
+                self.get_logger().info('Testing completed, shutting down...')
                 rclpy.shutdown()
             else:
                 # Reset robot position to start new episode
@@ -255,8 +279,8 @@ class DQNNode(Node):
 
 def main():
     rclpy.init()
-    node = DQNNode()
-    rclpy.spin(node)  # Run ROS2 loop without blocking for plt.show()
+    node = DQNTestNode()
+    rclpy.spin(node)  # Run ROS2 loop
     rclpy.shutdown()
 
 if __name__ == '__main__':

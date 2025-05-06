@@ -13,6 +13,7 @@ resource/turtlebot_dqn
 test/test_copyright.py
 test/test_flake8.py
 test/test_pep257.py
+turtlebot_dqn/My_testing_node.py
 turtlebot_dqn/__init__.py
 turtlebot_dqn/bumper_reset_node.py
 turtlebot_dqn/custom_model.py
