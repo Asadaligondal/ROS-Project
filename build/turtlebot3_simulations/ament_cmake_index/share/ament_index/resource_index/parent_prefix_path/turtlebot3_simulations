@@ -1,1 +1,1 @@
-/home/asad/turtlebot0/install/turtlebot_dqn:/home/asad/turtlebot0/install/turtlebot3_simulations:/home/asad/turtlebot0/install/turtlebot3_gazebo:/home/asad/turtlebot0/install/turtlebot3_fake_node:/opt/ros/humble
+/home/asad/turtlebot0/install/turtlebot3_gazebo:/home/asad/turtlebot0/install/turtlebot3_fake_node:/home/asad/turtlebot0/install/turtlebot_dqn:/opt/ros/humble

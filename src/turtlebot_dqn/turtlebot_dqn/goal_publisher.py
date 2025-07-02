@@ -8,7 +8,7 @@ class GoalPublisher(Node):
     def __init__(self):
         super().__init__('goal_publisher')
         # Service client for /get_entity_state
-        self.client = self.create_client(GetEntityState, '/get_entity_state')
+        self.client = self.create_client(GetEntityState, '/gazebo/get_entity_state')
         while not self.client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Waiting for /get_entity_state service...')
         
