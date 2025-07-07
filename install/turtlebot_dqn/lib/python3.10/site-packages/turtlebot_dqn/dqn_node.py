@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 import random
 import os
 import math
@@ -20,17 +21,31 @@ from geometry_msgs.msg import Twist, Pose, Pose2D
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
-# Constants
-ACTION_LINEAR = 0
-ACTION_ANGULAR = 1
+
+# Constants following GitHub configuration
+ACTION_SIZE = 5
+HIDDEN_SIZE = 512
+BATCH_SIZE = 128
+BUFFER_SIZE = 1000000
+DISCOUNT_FACTOR = 0.99
+LEARNING_RATE = 0.003
+OBSERVE_STEPS = 25000
+EPSILON_DECAY = 0.9995
+EPSILON_MINIMUM = 0.05
+TARGET_UPDATE_FREQUENCY = 1000
+
 MAX_STEPS = 500
-LIDAR_DISTANCE_CAP = 5.0
-COLLISION_THRESHOLD = 0.3
-EPISODE_TIMEOUT_SECONDS = 60
+LIDAR_DISTANCE_CAP = 3.5
+COLLISION_THRESHOLD = 0.13
+GOAL_THRESHOLD = 0.20
+EPISODE_TIMEOUT_SECONDS = 50
+
+# Actions following GitHub's POSSIBLE_ACTIONS
+POSSIBLE_ACTIONS = [[0.3, -1.0], [0.3, -0.5], [1.0, 0.0], [0.3, 0.5], [0.3, 1.0]]
 
 class ReplayBuffer:
     """Efficient experience replay buffer with numpy arrays"""
-    def __init__(self, capacity=50000, state_size=8, action_size=1):
+    def __init__(self, capacity=BUFFER_SIZE, state_size=362, action_size=1):
         self.capacity = capacity
         self.pos = 0
         self.size = 0
@@ -68,11 +83,20 @@ class ReplayBuffer:
         return self.size
 
 class DQNNetwork(nn.Module):
-    def __init__(self, input_size, output_size):
+    """DQN Network following GitHub architecture"""
+    def __init__(self, input_size, output_size, hidden_size=HIDDEN_SIZE):
         super(DQNNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, output_size)
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, output_size)
+        
+        # Initialize weights
+        self.apply(self._init_weights)
+    
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            torch.nn.init.xavier_uniform_(m.weight)
+            torch.nn.init.constant_(m.bias, 0)
     
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -84,78 +108,75 @@ class DQNNode(Node):
     def __init__(self):
         super().__init__('dqn_node')
         
-        # QoS Profiles for better performance
+        # QoS Profiles
         qos = QoSProfile(depth=10)
         from rclpy.qos import QoSReliabilityPolicy, QoSDurabilityPolicy
         qos_clock = QoSProfile(
-        depth=10,
-        reliability=QoSReliabilityPolicy.BEST_EFFORT,
-        durability=QoSDurabilityPolicy.VOLATILE)
-        self.clock_sub = self.create_subscription(Clock, '/clock', self.clock_callback, qos_profile=qos_clock)
+            depth=10,
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            durability=QoSDurabilityPolicy.VOLATILE)
         
         # ROS2 publishers/subscribers
+        self.clock_sub = self.create_subscription(Clock, '/clock', self.clock_callback, qos_profile=qos_clock)
         self.lidar_sub = self.create_subscription(
             LaserScan, '/scan', self.lidar_callback, qos_profile=qos_profile_sensor_data)
         self.bumper_sub = self.create_subscription(
             ContactsState, '/bumper_states', self.bumper_callback, qos)
         self.vel_pub = self.create_publisher(Twist, '/cmd_vel', qos)
-        
         self.goal_sub = self.create_subscription(
             Pose2D, '/goal_pose', self.goal_callback, qos)
-        # Goal tracking variables
+        
+        # Goal and robot position tracking
         self.goal_x = 0.0
         self.goal_y = 0.0
         self.robot_x = 0.0
         self.robot_y = 0.0
         self.last_distance_to_goal = None
-        # Add this after your SetEntityState client:
+        
+        # Gazebo services
         self.get_entity_client = self.create_client(GetEntityState, '/gazebo/get_entity_state')
-        # Setup entity state client for position reset
         self.set_entity_client = self.create_client(SetEntityState, '/gazebo/set_entity_state')
         while not self.set_entity_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Waiting for /gazebo/set_entity_state service...')
         
-        # DQN setup
-        self.state_size = 10
-        self.action_size = 4
-        self.dqn = DQNNetwork(self.state_size, self.action_size)
-        self.target_dqn = DQNNetwork(self.state_size, self.action_size)
+        # DQN setup - 360 LiDAR + goal_x + goal_y = 362 inputs
+        self.state_size = 362
+        self.action_size = ACTION_SIZE
+        
+        # Create networks
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.dqn = DQNNetwork(self.state_size, self.action_size).to(self.device)
+        self.target_dqn = DQNNetwork(self.state_size, self.action_size).to(self.device)
         self.target_dqn.load_state_dict(self.dqn.state_dict())
         
-        # Training parameters
-        self.gamma = 0.99
+        # Training parameters following GitHub config
+        self.gamma = DISCOUNT_FACTOR
         self.epsilon = 1.0
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
-        self.learning_rate = 0.0001
-        self.batch_size = 64
-        self.target_update_freq = 10
+        self.epsilon_min = EPSILON_MINIMUM
+        self.epsilon_decay = EPSILON_DECAY
+        self.learning_rate = LEARNING_RATE
+        self.batch_size = BATCH_SIZE
+        self.target_update_freq = TARGET_UPDATE_FREQUENCY
+        self.observe_steps = OBSERVE_STEPS
+        
+        # Optimizer and loss
         self.optimizer = optim.Adam(self.dqn.parameters(), lr=self.learning_rate)
         self.loss_fn = nn.MSELoss()
         
         # Experience replay buffer
-        self.memory = ReplayBuffer(capacity=50000, state_size=10)
-        self.min_replay_size = 1000
-        
-        # Actions - same as your original
-        self.actions = [
-            (0.1, 0.0),   # Forward
-            (0.0, 0.5),   # Left
-            (0.0, -0.5),  # Right
-            (0.0, 0.0)    # Stop
-        ]
+        self.memory = ReplayBuffer(capacity=BUFFER_SIZE, state_size=self.state_size)
         
         # Episode tracking
         self.max_episodes = 1500
         self.episode = 0
         self.step = 0
+        self.total_step = 0  # Global step counter for target updates
         self.total_reward = 0.0
         self.current_state = None
         self.last_state = None
         self.last_action = None
-        self.train_ready = False
         
-        # Metrics tracking (without real-time plotting)
+        # Metrics tracking
         self.episode_steps = []
         self.episode_rewards = []
         self.losses = []
@@ -164,8 +185,9 @@ class DQNNode(Node):
         self.respawning = False
         self.collision_detected = False
         self.done = False
+        self.goal_reached = False
         
-        # Time management (from reference code)
+        # Time management
         self.time_sec = 0
         self.episode_deadline = float('inf')
         self.reset_deadline = False
@@ -173,21 +195,16 @@ class DQNNode(Node):
         
         # Initialize
         random.seed(42)
+        torch.manual_seed(42)
         self.stop_robot()
         
-        # Create a separate timer for training (decoupled from sensor callbacks)
-        self.train_timer = self.create_timer(0.1, self.train_step)
-        
-        # Periodic log timer (low frequency to minimize impact)
+        # Periodic log timer
         self.log_timer = self.create_timer(5.0, self.log_progress)
-
 
     def goal_callback(self, msg):
         """Update goal position"""
         self.goal_x = msg.x
         self.goal_y = msg.y
-        #self.get_logger().info(f'Received goal: x={self.goal_x:.2f}, y={self.goal_y:.2f}')
-
 
     def robot_position_callback(self, future):
         """Handle robot position response"""
@@ -196,13 +213,10 @@ class DQNNode(Node):
             if response.success:
                 self.robot_x = response.state.pose.position.x
                 self.robot_y = response.state.pose.position.y
-                # Temporary logging
-                #self.get_logger().info(f'Robot position updated: x={self.robot_x:.2f}, y={self.robot_y:.2f}')
             else:
                 self.get_logger().warn('Failed to get robot position')
         except Exception as e:
             self.get_logger().error(f'Error in robot position callback: {e}')
-
 
     def update_robot_position(self):
         """Update robot position from Gazebo (async)"""
@@ -215,14 +229,6 @@ class DQNNode(Node):
         future = self.get_entity_client.call_async(request)
         future.add_done_callback(self.robot_position_callback)
 
-    def get_robot_position(self):
-        """Get current robot position from Gazebo"""
-        request = GetEntityState.Request()
-        request.name = 'burger'  # Your robot name in Gazebo
-        
-        future = self.set_entity_client.call_async(request)  # Wrong client, let's fix this
-
-
     def clock_callback(self, msg):
         """Track simulation time for episode timeouts"""
         self.time_sec = msg.clock.sec
@@ -231,7 +237,7 @@ class DQNNode(Node):
             return
             
         self.clock_msgs_skipped += 1
-        if self.clock_msgs_skipped <= 10:  # Wait for simulation to reset clock
+        if self.clock_msgs_skipped <= 10:
             return
             
         self.episode_deadline = self.time_sec + EPISODE_TIMEOUT_SECONDS
@@ -246,93 +252,104 @@ class DQNNode(Node):
         self.vel_pub.publish(twist)
 
     def preprocess_state(self, ranges):
-        """Process LiDAR data and goal information into state representation"""
-        # Process LiDAR (same as before)
-        lidar_sectors = np.zeros(8, dtype=np.float32)
-        sector_size = len(ranges) // 8
+        """Process full LiDAR data (360 readings) and goal information into state representation"""
+        # Process full LiDAR scan (360 readings)
+        lidar_data = np.array(ranges, dtype=np.float32)
         
-        for i in range(8):
-            start = i * sector_size
-            end = (i + 1) * sector_size
-            min_dist = np.min(ranges[start:end])
-            lidar_sectors[i] = min_dist if min_dist < LIDAR_DISTANCE_CAP else LIDAR_DISTANCE_CAP
-        
-        # Normalize LiDAR values to [0, 1] range
-        lidar_sectors = lidar_sectors / LIDAR_DISTANCE_CAP
+        # Cap and normalize LiDAR values
+        lidar_data = np.clip(lidar_data, 0, LIDAR_DISTANCE_CAP)
+        lidar_data = lidar_data / LIDAR_DISTANCE_CAP  # Normalize to [0, 1]
         
         # Calculate goal information
         distance_to_goal = np.sqrt((self.goal_x - self.robot_x)**2 + (self.goal_y - self.robot_y)**2)
         angle_to_goal = np.arctan2(self.goal_y - self.robot_y, self.goal_x - self.robot_x)
         
-        # Normalize distance (cap at 10.0 meters)
-        distance_to_goal = min(distance_to_goal, 10.0) / 10.0
+        # Normalize goal information
+        distance_to_goal = min(distance_to_goal, 10.0) / 10.0  # Cap at 10m and normalize
+        angle_to_goal = angle_to_goal / np.pi  # Normalize to [-1, 1]
         
-        # Normalize angle to [-1, 1] range
-        angle_to_goal = angle_to_goal / np.pi
-        
-        # Combine LiDAR and goal info
-        state = np.concatenate([lidar_sectors, [distance_to_goal, angle_to_goal]])
-        
-        # Temporary logging to see the complete state
-        #self.get_logger().info(f'State: LiDAR={lidar_sectors[:3]}, dist_to_goal={distance_to_goal:.3f}, angle_to_goal={angle_to_goal:.3f}')
+        # Combine LiDAR (360) + goal info (2) = 362 dimensional state
+        state = np.concatenate([lidar_data, [distance_to_goal, angle_to_goal]])
         
         return state
 
     def choose_action(self, state):
-        """Select action using epsilon-greedy policy"""
-        # if random.random() < self.epsilon:
-        return random.randint(0, self.action_size - 1)
+        """Select action using epsilon-greedy policy following GitHub approach"""
+        # During initial exploration phase, take random actions
+        if self.total_step < self.observe_steps:
+            return random.randint(0, self.action_size - 1)
         
+        # Epsilon-greedy after initial exploration
+        if random.random() < self.epsilon:
+            return random.randint(0, self.action_size - 1)
+        
+        # Exploit: use DQN to select action
         with torch.no_grad():
-            state_tensor = torch.from_numpy(state).float()
+            state_tensor = torch.from_numpy(state).float().to(self.device)
             q_values = self.dqn(state_tensor)
             return q_values.argmax().item()
 
     def train_step(self):
-        """Periodic training step (decoupled from sensor callbacks)"""
-        # Check if episode is done (timeout)
-        if self.time_sec >= self.episode_deadline and not self.done and not self.respawning:
-            self.get_logger().info(f'Episode {self.episode}: Timeout at {self.time_sec}')
-            if self.last_state is not None:
-                self.memory.add(
-                    self.last_state,
-                    self.last_action,
-                    -50.0,  # Penalty for timeout
-                    self.current_state if self.current_state is not None else self.last_state,
-                    True
-                )
-            self.done = True
-            self.reset_episode()
-            return
-            
-        # Skip training if not ready or during reset
-        if len(self.memory) < self.min_replay_size or not self.train_ready or self.respawning:
-            return
+        """Train the DQN following GitHub approach"""
+        if len(self.memory) < self.batch_size:
+            return 0.0
         
-        # Sample batch and convert to tensors (single batch per training step)
+        # Sample batch
         states, actions, rewards, next_states, dones = self.memory.sample(self.batch_size)
-        states_tensor = torch.from_numpy(states).float()
-        actions_tensor = torch.from_numpy(actions).long()
-        rewards_tensor = torch.from_numpy(rewards).float()
-        next_states_tensor = torch.from_numpy(next_states).float()
-        dones_tensor = torch.from_numpy(dones).float()
         
-        # Compute current Q values
-        current_q_values = self.dqn(states_tensor).gather(1, actions_tensor).squeeze(1)
+        # Convert to tensors
+        states_tensor = torch.from_numpy(states).float().to(self.device)
+        actions_tensor = torch.from_numpy(actions).long().to(self.device)
+        rewards_tensor = torch.from_numpy(rewards).float().to(self.device)
+        next_states_tensor = torch.from_numpy(next_states).float().to(self.device)
+        dones_tensor = torch.from_numpy(dones).float().to(self.device)
         
-        # Compute next Q values using target network
+        # Current Q values
+        current_q_values = self.dqn(states_tensor).gather(1, actions_tensor)
+        
+        # Next Q values using target network
         with torch.no_grad():
-            next_q_values = self.target_dqn(next_states_tensor).max(1)[0]
-            target_q_values = rewards_tensor.squeeze(1) + (1 - dones_tensor.squeeze(1)) * self.gamma * next_q_values
+            next_q_values = self.target_dqn(next_states_tensor).amax(1, keepdim=True)
+            target_q_values = rewards_tensor + (self.gamma * next_q_values * (1 - dones_tensor))
         
-        # Compute loss and optimize
-        loss = self.loss_fn(current_q_values, target_q_values)
-        self.losses.append(loss.item())
+        # Compute loss
+        loss = F.mse_loss(current_q_values, target_q_values)
         
+        # Optimize
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.dqn.parameters(), max_norm=1.0)
+        nn.utils.clip_grad_norm_(self.dqn.parameters(), max_norm=1.0, norm_type=1)
         self.optimizer.step()
+        
+        # Update target network
+        if self.total_step % self.target_update_freq == 0:
+            self.target_dqn.load_state_dict(self.dqn.state_dict())
+        
+        return loss.item()
+
+    def calculate_reward(self, current_state):
+        """Calculate reward following simplified approach"""
+        reward = 0.0
+        
+        # Check for goal reached
+        distance_to_goal = np.sqrt((self.goal_x - self.robot_x)**2 + (self.goal_y - self.robot_y)**2)
+        
+        if distance_to_goal < GOAL_THRESHOLD:
+            self.goal_reached = True
+            return 100.0  # Large reward for reaching goal
+        
+        # Distance-based reward (encourage moving toward goal)
+        if self.last_distance_to_goal is not None:
+            distance_change = self.last_distance_to_goal - distance_to_goal
+            reward += distance_change * 20.0  # Reward for getting closer
+        
+        # Update last distance
+        self.last_distance_to_goal = distance_to_goal
+        
+        # Small survival bonus
+        reward += 0.1
+        
+        return reward
 
     def reset_episode(self):
         """Reset environment for a new episode"""
@@ -342,13 +359,8 @@ class DQNNode(Node):
         self.episode_steps.append(self.step)
         self.episode_rewards.append(self.total_reward)
         
-        # Update target network periodically
-        if self.episode % self.target_update_freq == 0:
-            self.target_dqn.load_state_dict(self.dqn.state_dict())
-            self.get_logger().info(f'Target network updated at episode {self.episode}')
-        
-        # Decay epsilon
-        if self.epsilon > self.epsilon_min:
+        # Decay epsilon after initial exploration phase
+        if self.total_step >= self.observe_steps and self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
         
         # Increment episode counter and reset step counter
@@ -357,16 +369,23 @@ class DQNNode(Node):
         self.total_reward = 0.0
         self.last_state = None
         self.last_action = None
+        self.last_distance_to_goal = None
         self.done = False
+        self.goal_reached = False
         
-        # Save model if training is complete
+        # Save model and plots periodically
+        if self.episode > 0 and self.episode % 100 == 0:
+            self.save_model()
+        if self.episode > 0 and self.episode % 10 == 0:
+            self.save_progress_plots()
+        
+        # Check if training is complete
         if self.episode >= self.max_episodes:
             self.save_model()
             self.get_logger().info('Training completed, shutting down...')
             rclpy.shutdown()
             return
-        if self.episode > 0 and self.episode % 10 == 0:
-            self.save_progress_plots()
+        
         # Reset robot position
         self.respawning = True
         self.reset_robot_position()
@@ -392,7 +411,6 @@ class DQNNode(Node):
         
         self.get_logger().info(f'Progress plot saved at episode {self.episode}')
 
-
     def reset_robot_position(self):
         """Reset the robot to a random starting position"""
         x = random.uniform(-2.0, 2.0)
@@ -402,7 +420,7 @@ class DQNNode(Node):
         
         request = SetEntityState.Request()
         request.state = EntityState()
-        request.state.name = 'burger'  # Your robot model name in Gazebo
+        request.state.name = 'burger'
         
         # Set position
         request.state.pose = Pose()
@@ -443,18 +461,17 @@ class DQNNode(Node):
     def enable_collision_detection(self):
         """Re-enable collision detection after respawn"""
         self.respawning = False
-        if self.respawn_timer:
-            self.respawn_timer.cancel()  # Self-cancel after execution
+        if hasattr(self, 'respawn_timer') and self.respawn_timer:
+            self.respawn_timer.cancel()
             self.respawn_timer = None
 
     def save_model(self):
         """Save the trained model and metrics"""
-        # Save model
         model_path = os.path.expanduser('~/turtlebot0/dqn_model.pth')
         torch.save(self.dqn.state_dict(), model_path)
         self.get_logger().info(f'Model saved to {model_path}')
         
-        # Save metrics as numpy arrays for later analysis
+        # Save metrics
         metrics_path = os.path.expanduser('~/turtlebot0/dqn_metrics.npz')
         np.savez(
             metrics_path,
@@ -471,113 +488,85 @@ class DQNNode(Node):
             
         self.get_logger().info(
             f'Episode: {self.episode}/{self.max_episodes}, '
-            # f'Steps: {self.step}, '
+            f'Total Steps: {self.total_step}, '
             f'Reward: {self.total_reward:.2f}, '
             f'Epsilon: {self.epsilon:.3f}, '
-            # f'Buffer: {len(self.memory)}, '
-            f'Loss: {self.losses[-1] if self.losses else 0:.4f}'
+            f'Buffer: {len(self.memory)}'
         )
 
     def lidar_callback(self, msg):
         """Process LiDAR data and take actions"""
         if self.episode >= self.max_episodes or self.respawning:
             return
-        # if self.step % 10 == 0:  # Update every 10 steps
-        self.update_robot_position()
-        # Process LiDAR data
+        
+        # Check episode timeout
+        if self.time_sec >= self.episode_deadline and not self.done:
+            self.get_logger().info(f'Episode {self.episode}: Timeout at {self.time_sec}')
+            if self.last_state is not None:
+                self.memory.add(
+                    self.last_state,
+                    self.last_action,
+                    -50.0,  # Timeout penalty
+                    self.current_state if self.current_state is not None else self.last_state,
+                    True
+                )
+            self.done = True
+            self.reset_episode()
+            return
+        
+        # Update robot position
+        if self.step % 10 == 0:
+            self.update_robot_position()
+        
+        # Process LiDAR data into state
         current_state = self.preprocess_state(msg.ranges)
         self.current_state = current_state
         
-        # Choose and execute action
+        # Choose action
         action_idx = self.choose_action(current_state)
-        linear_x, angular_z = self.actions[action_idx]
+        linear_x, angular_z = POSSIBLE_ACTIONS[action_idx]
         
-        # Add motor noise if enabled (like in reference code)
-        # Uncomment if you want this feature
-        # if ENABLE_MOTOR_NOISE:
-        #     linear_x += np.clip(np.random.normal(0, 0.05), -0.1, 0.1)
-        #     angular_z += np.clip(np.random.normal(0, 0.05), -0.1, 0.1)
-        
-        # Publish velocity
+        # Publish velocity command
         twist = Twist()
         twist.linear.x = linear_x
         twist.angular.z = angular_z
         self.vel_pub.publish(twist)
         
-        # Add experience to replay buffer
+        # Add experience to replay buffer and train
         if self.last_state is not None and not self.done:
-            # Basic reward function: +1 for survival, distance-based rewards could be added
-            reward = 0.0
-    
-            # 1. Survival bonus (small)
-            reward += 0.1
+            # Calculate reward
+            reward = self.calculate_reward(current_state)
             
-            # 2. Goal-based reward
-            current_distance = np.sqrt((self.goal_x - self.robot_x)**2 + (self.goal_y - self.robot_y)**2)
-            
-            if self.last_distance_to_goal is not None:
-                # Reward for moving closer to goal
-                distance_change = self.last_distance_to_goal - current_distance
-                reward += distance_change * 10.0  # Scale factor for distance reward
-                
-                # Bonus for being very close to goal
-                if current_distance < 0.5:  # Within 0.5 meters
-                    reward += 20.0
-                elif current_distance < 1.0:  # Within 1.0 meters
-                    reward += 5.0
-            
-            # Update last distance
-            self.last_distance_to_goal = current_distance
-            
-            # 3. Obstacle avoidance reward
-            min_lidar_distance = np.min(current_state[:8])  # First 8 elements are LiDAR
-            if min_lidar_distance < 0.3:  # Very close to obstacle
-                reward -= 10.0
-            elif min_lidar_distance < 0.5:  # Moderately close
-                reward -= 2.0
-            elif min_lidar_distance > 1.0:  # Safe distance
-                reward += 1.0
-            
-            # 4. Penalty for not moving (encourage exploration)
-            if action_idx == 3:  # Stop action
-                reward -= 0.5
+            # Check for goal reached
+            if self.goal_reached:
+                self.get_logger().info(f'Episode {self.episode}: Goal reached at step {self.step}')
+                self.memory.add(self.last_state, self.last_action, reward, current_state, True)
+                self.total_reward += reward
+                self.done = True
+                self.reset_episode()
+                return
             
             # Store transition
-            self.memory.add(
-                self.last_state,
-                self.last_action,
-                reward,
-                current_state,
-                False  # not done yet
-            )
-            
-            # Track reward
+            self.memory.add(self.last_state, self.last_action, reward, current_state, False)
             self.total_reward += reward
+            
+            # Train if we have enough experience
+            if len(self.memory) >= self.batch_size:
+                loss = self.train_step()
+                if loss > 0:
+                    self.losses.append(loss)
         
         # Update for next iteration
         self.last_state = current_state
         self.last_action = action_idx
         self.step += 1
-        
-        # Set train ready flag once we have enough experience
-        if len(self.memory) >= self.min_replay_size and not self.train_ready:
-            self.train_ready = True
-            self.get_logger().info(f'Starting training at episode {self.episode}')
+        self.total_step += 1
         
         # Check if episode is done due to max steps
         if self.step >= MAX_STEPS and not self.done:
             self.get_logger().info(f'Episode {self.episode}: Max steps reached')
-            
-            # Add final transition with done=True
             if self.last_state is not None:
-                self.memory.add(
-                    self.last_state,
-                    self.last_action,
-                    1.0,  # Final reward
-                    current_state,
-                    True  # done
-                )
-            
+                self.memory.add(self.last_state, self.last_action, -10.0, current_state, True)
             self.done = True
             self.reset_episode()
 
@@ -595,14 +584,11 @@ class DQNNode(Node):
                 self.last_action,
                 -100.0,  # Large negative reward for collision
                 self.current_state if self.current_state is not None else self.last_state,
-                True  # done
+                True
             )
             
-            # Update total reward
             self.total_reward -= 100.0
             self.done = True
-            
-            # Reset episode
             self.reset_episode()
 
 def main():
@@ -614,7 +600,6 @@ def main():
     except KeyboardInterrupt:
         node.get_logger().info('Node stopped by keyboard interrupt')
     finally:
-        # Save model on shutdown if not already done
         if node.episode > 0 and node.episode < node.max_episodes:
             node.save_model()
         
