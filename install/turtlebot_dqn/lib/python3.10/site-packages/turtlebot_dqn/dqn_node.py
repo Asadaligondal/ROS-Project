@@ -146,7 +146,7 @@ class DQNNode(Node):
         ]
         
         # Episode tracking
-        self.max_episodes = 1000
+        self.max_episodes = 1500
         self.episode = 0
         self.step = 0
         self.total_reward = 0.0
@@ -280,8 +280,8 @@ class DQNNode(Node):
 
     def choose_action(self, state):
         """Select action using epsilon-greedy policy"""
-        if random.random() < self.epsilon:
-            return random.randint(0, self.action_size - 1)
+        # if random.random() < self.epsilon:
+        return random.randint(0, self.action_size - 1)
         
         with torch.no_grad():
             state_tensor = torch.from_numpy(state).float()

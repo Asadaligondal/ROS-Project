@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist, Pose
+from geometry_msgs.msg import Twist, Pose, Pose2D
 from gazebo_msgs.msg import ContactsState, EntityState
-from gazebo_msgs.srv import SetEntityState
+from gazebo_msgs.srv import SetEntityState, GetEntityState
 import numpy as np
 import torch
 import torch.nn as nn
@@ -29,27 +30,40 @@ class DQNNetwork(nn.Module):
 class DQNTestNode(Node):
     def __init__(self):
         super().__init__('dqn_test_node')
+        
+        # QoS Profiles for better performance
+        qos = QoSProfile(depth=10)
+        
         # ROS2 setup
         self.lidar_sub = self.create_subscription(
-            LaserScan, '/scan', self.lidar_callback, 10)
+            LaserScan, '/scan', self.lidar_callback, qos_profile=qos_profile_sensor_data)
         self.bumper_sub = self.create_subscription(
-            ContactsState, '/bumper_states', self.bumper_callback, 10)
-        self.vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+            ContactsState, '/bumper_states', self.bumper_callback, qos)
+        self.vel_pub = self.create_publisher(Twist, '/cmd_vel', qos)
         
-        # Setup entity state client for position reset
+        # Goal subscription (static goal from external source)
+        self.goal_sub = self.create_subscription(
+            Pose2D, '/goal_pose', self.goal_callback, qos)
+        
+        # Setup entity state clients
         self.set_entity_client = self.create_client(SetEntityState, '/gazebo/set_entity_state')
+        self.get_entity_client = self.create_client(GetEntityState, '/gazebo/get_entity_state')
+        
+        # Wait for services
         while not self.set_entity_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Waiting for /gazebo/set_entity_state service...')
+        while not self.get_entity_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Waiting for /gazebo/get_entity_state service...')
         
-        # DQN setup
-        self.state_size = 8
+        # DQN setup - Match training model exactly
+        self.state_size = 10  # 8 lidar sectors + 2 goal info (distance + angle)
         self.action_size = 4
         self.dqn = DQNNetwork(self.state_size, self.action_size)
         
         # Load pre-trained model
         model_path = os.path.expanduser('~/turtlebot0/dqn_model.pth')
         if os.path.exists(model_path):
-            self.dqn.load_state_dict(torch.load(model_path))
+            self.dqn.load_state_dict(torch.load(model_path, map_location='cpu'))
             self.get_logger().info(f'Model loaded from {model_path}')
             self.dqn.eval()  # Set to evaluation mode
         else:
@@ -57,25 +71,39 @@ class DQNTestNode(Node):
             rclpy.shutdown()
             return
         
+        # Actions - same as training
         self.actions = [
-            (0.1, 0.0),  # Forward
-            (0.0, 0.5),  # Left
-            (0.0, -0.5), # Right
-            (0.0, 0.0)   # Stop
+            (0.1, 0.0),   # Forward
+            (0.0, 0.5),   # Left
+            (0.0, -0.5),  # Right
+            (0.0, 0.0)    # Stop
         ]
         
+        # Goal tracking variables - match training exactly
+        self.goal_x = 0.0
+        self.goal_y = 0.0
+        self.robot_x = 0.0
+        self.robot_y = 0.0
+        self.last_distance_to_goal = None
+        
         # Episode tracking
-        self.max_episodes = 50  # Test for fewer episodes than training
+        self.max_episodes = 50
         self.max_steps = 300
         self.episode = 0
         self.step = 0
         self.total_reward = 0.0
         self.current_state = None
         
+        # Status flags
+        self.position_updated = False
+        self.goal_received = False
+        
         # Data storage for plotting
         self.episode_steps = []
         self.episode_rewards = []
-        random.seed()
+        
+        # Initialize
+        random.seed(42)
         self.stop_robot()
 
         # Matplotlib setup
@@ -85,10 +113,24 @@ class DQNTestNode(Node):
         self.update_plot()  # Initial empty plot
 
         # ROS2 timer to keep plot responsive
-        self.plot_timer = self.create_timer(0.1, self.plot_callback)  # 10 Hz to process GUI events
+        self.plot_timer = self.create_timer(0.1, self.plot_callback)
         
-        self.get_logger().info('DQN test node initialized - starting testing...')
+        # Timer to periodically update robot position
+        self.position_timer = self.create_timer(0.1, self.update_robot_position)
         
+        self.get_logger().info('DQN test node initialized - waiting for goal...')
+    
+    def goal_callback(self, msg):
+        """Update goal position from external source"""
+        self.goal_x = msg.x
+        self.goal_y = msg.y
+        self.goal_received = True
+        self.get_logger().info(f'Goal received: x={self.goal_x:.2f}, y={self.goal_y:.2f}')
+        
+        # Start testing once goal is received
+        if not self.goal_received:
+            self.get_logger().info('Starting testing with received goal...')
+    
     def stop_robot(self):
         """Publish zero velocity to stop the robot."""
         twist = Twist()
@@ -104,28 +146,115 @@ class DQNTestNode(Node):
             start = i * sector_size
             end = (i + 1) * sector_size
             sector = ranges[start:end]
-            min_dist = min(sector) if min(sector) < 5.0 else 5.0
+            # Handle inf values and cap at 5.0
+            valid_ranges = [r for r in sector if not math.isinf(r) and not math.isnan(r)]
+            if valid_ranges:
+                min_dist = min(valid_ranges)
+                min_dist = min(min_dist, 5.0)
+            else:
+                min_dist = 5.0
             sectors.append(min_dist)
         return np.array(sectors, dtype=np.float32)
+
+    def update_robot_position(self):
+        """Update robot position from Gazebo (async)"""
+        if not self.get_entity_client.service_is_ready():
+            return
+            
+        request = GetEntityState.Request()
+        request.name = 'burger'
+        
+        future = self.get_entity_client.call_async(request)
+        future.add_done_callback(self.robot_position_callback)
+
+    def robot_position_callback(self, future):
+        """Handle robot position response"""
+        try:
+            response = future.result()
+            if response.success:
+                self.robot_x = response.state.pose.position.x
+                self.robot_y = response.state.pose.position.y
+                self.position_updated = True
+            else:
+                self.get_logger().warn('Failed to get robot position')
+        except Exception as e:
+            self.get_logger().error(f'Error in robot position callback: {e}')
+
+    def create_state(self, lidar_data):
+        """Create state vector that matches training exactly (8 lidar + 2 goal info)"""
+        if not self.position_updated or not self.goal_received:
+            # Return a default state if position/goal not available
+            return np.zeros(self.state_size, dtype=np.float32)
+        
+        # Calculate distance and angle to goal
+        dx = self.goal_x - self.robot_x
+        dy = self.goal_y - self.robot_y
+        distance_to_goal = math.sqrt(dx**2 + dy**2)
+        angle_to_goal = math.atan2(dy, dx)
+        
+        # Normalize goal information exactly like in training
+        normalized_distance = min(distance_to_goal / 5.0, 1.0)  # Normalize to [0, 1]
+        normalized_angle = angle_to_goal / math.pi  # Normalize to [-1, 1]
+        
+        # Combine lidar data with goal information
+        state = np.concatenate([
+            lidar_data,  # 8 elements
+            [normalized_distance, normalized_angle]  # 2 elements
+        ])
+        
+        return state.astype(np.float32)
 
     def choose_action(self, state):
         """Choose action based on the trained model (no exploration)"""
         with torch.no_grad():
-            state_tensor = torch.from_numpy(state).float()
+            state_tensor = torch.from_numpy(state).float().unsqueeze(0)  # Add batch dimension
             q_values = self.dqn(state_tensor)
             action = q_values.argmax().item()
+            self.get_logger().info(f'action choosen {action}')
             return action
 
+    def calculate_reward(self, lidar_data):
+        """Calculate reward similar to training"""
+        # Base reward for staying alive
+        reward = 1.0
+        
+        # Progress toward goal reward
+        if self.position_updated and self.goal_received:
+            dx = self.goal_x - self.robot_x
+            dy = self.goal_y - self.robot_y
+            current_distance = math.sqrt(dx**2 + dy**2)
+            
+            if self.last_distance_to_goal is not None:
+                distance_reward = (self.last_distance_to_goal - current_distance) * 10.0
+                reward += distance_reward
+            
+            self.last_distance_to_goal = current_distance
+            
+            # Goal reached reward
+            if current_distance < 0.5:
+                reward += 100.0
+                self.get_logger().info(f'Episode {self.episode}: Goal reached!')
+                return reward, True  # Episode done
+        
+        # Obstacle avoidance penalty
+        min_distance = min(lidar_data)
+        if min_distance < 0.5:
+            reward -= (0.5 - min_distance) * 20.0
+        
+        return reward, False
+
     def reset_episode(self):
-        self.get_logger().info(f'Episode {self.episode} completed - Steps: {self.step}, Total Reward: {self.total_reward}')
+        self.get_logger().info(f'Episode {self.episode} completed - Steps: {self.step}, Total Reward: {self.total_reward:.2f}')
+        
         # Store data for plotting
         self.episode_steps.append(self.step)
         self.episode_rewards.append(self.total_reward)
-        self.update_plot()  # Refresh plot after each episode
+        self.update_plot()
         
         self.episode += 1
         self.step = 0
         self.total_reward = 0.0
+        self.last_distance_to_goal = None
         
         # Reset robot position
         self.reset_robot_position()
@@ -145,7 +274,7 @@ class DQNTestNode(Node):
         
         request = SetEntityState.Request()
         request.state = EntityState()
-        request.state.name = 'burger'  # Your robot model name in Gazebo
+        request.state.name = 'burger'
         
         # Set position
         request.state.pose = Pose()
@@ -176,6 +305,7 @@ class DQNTestNode(Node):
                 self.get_logger().error('Failed to reset robot position')
             else:
                 self.stop_robot()
+                self.position_updated = False  # Force position update
         except Exception as e:
             self.get_logger().error(f'Robot position reset failed: {e}')
 
@@ -183,11 +313,11 @@ class DQNTestNode(Node):
         """Save testing results"""
         # Save final plot
         plot_path = os.path.expanduser('~/turtlebot0/dqn_testing_plot.png')
-        self.update_plot()  # Ensure final data is plotted
-        self.fig.savefig(plot_path)
+        self.update_plot()
+        self.fig.savefig(plot_path, dpi=300, bbox_inches='tight')
         self.get_logger().info(f'Testing plot saved to {plot_path}')
         
-        # Save data as CSV for further analysis
+        # Save data as CSV
         import csv
         csv_path = os.path.expanduser('~/turtlebot0/dqn_testing_results.csv')
         with open(csv_path, 'w', newline='') as csvfile:
@@ -197,6 +327,12 @@ class DQNTestNode(Node):
                 writer.writerow([i, self.episode_steps[i], self.episode_rewards[i]])
         self.get_logger().info(f'Testing data saved to {csv_path}')
         
+        # Print summary statistics
+        if self.episode_steps:
+            avg_steps = np.mean(self.episode_steps)
+            avg_reward = np.mean(self.episode_rewards)
+            self.get_logger().info(f'Testing Summary: Avg Steps: {avg_steps:.2f}, Avg Reward: {avg_reward:.2f}')
+        
         plt.close(self.fig)
 
     def update_plot(self):
@@ -205,29 +341,40 @@ class DQNTestNode(Node):
         self.ax2.clear()
         episodes = list(range(len(self.episode_steps)))
         if episodes:
-            self.ax1.plot(episodes, self.episode_steps, 'b-', label='Steps')
-            self.ax2.plot(episodes, self.episode_rewards, 'r-', label='Reward')
+            self.ax1.plot(episodes, self.episode_steps, 'b-', label='Steps', linewidth=2)
+            self.ax2.plot(episodes, self.episode_rewards, 'r-', label='Reward', linewidth=2)
             self.ax1.set_xlabel('Episode')
             self.ax1.set_ylabel('Steps', color='b')
             self.ax2.set_ylabel('Reward', color='r')
             self.ax1.tick_params(axis='y', labelcolor='b')
             self.ax2.tick_params(axis='y', labelcolor='r')
+            self.ax1.grid(True, alpha=0.3)
             self.fig.legend(loc='upper left')
             self.fig.tight_layout()
             self.ax1.set_title('DQN Testing Performance')
-        plt.draw()  # Redraw the plot
-        plt.pause(0.001)  # Brief pause to update GUI
+        plt.draw()
+        plt.pause(0.001)
 
     def plot_callback(self):
         """Keep the matplotlib event loop alive"""
-        plt.pause(0.001)  # Process GUI events without blocking
+        plt.pause(0.001)
 
     def lidar_callback(self, msg):
         """Process lidar data and control the robot"""
-        if self.episode >= self.max_episodes:
+        if self.episode >= self.max_episodes or not self.goal_received:
             return
         
-        self.current_state = self.preprocess_lidar(msg.ranges)
+        # Process lidar data
+        lidar_data = self.preprocess_lidar(msg.ranges)
+        
+        # Create complete state (lidar + goal info)
+        self.current_state = self.create_state(lidar_data)
+        
+        # Skip if state is not properly initialized
+        if np.all(self.current_state == 0):
+            return
+        
+        # Choose action using trained model
         action_idx = self.choose_action(self.current_state)
         linear_x, angular_z = self.actions[action_idx]
         
@@ -237,17 +384,23 @@ class DQNTestNode(Node):
         twist.angular.z = angular_z
         self.vel_pub.publish(twist)
         
-        # Reward: +1 per step (same as training)
-        self.total_reward += 1.0
+        # Calculate reward
+        reward, done = self.calculate_reward(lidar_data)
+        self.total_reward += reward
         self.step += 1
         
-        # Print episode progress every 50 steps
-        if self.step % 50 == 0:
-            self.get_logger().info(f'Episode {self.episode}: Step {self.step}, Current reward: {self.total_reward}')
-        
-        if self.step >= self.max_steps:
-            self.get_logger().info(f'Episode {self.episode}: Max steps reached')
+        # Check if episode should end
+        if done or self.step >= self.max_steps:
+            if done:
+                self.get_logger().info(f'Episode {self.episode}: Goal reached at step {self.step}')
+            else:
+                self.get_logger().info(f'Episode {self.episode}: Max steps reached')
             self.reset_episode()
+            return
+        
+        # Print progress every 50 steps
+        if self.step % 50 == 0:
+            self.get_logger().info(f'Episode {self.episode}: Step {self.step}, Reward: {self.total_reward:.2f}')
 
     def bumper_callback(self, msg):
         """Handle collisions"""
@@ -263,10 +416,11 @@ class DQNTestNode(Node):
             self.episode_rewards.append(self.total_reward)
             self.update_plot()
             
-            # Increment episode counter
+            # Reset for next episode
             self.episode += 1
             self.step = 0
             self.total_reward = 0.0
+            self.last_distance_to_goal = None
             
             # Check if testing is complete
             if self.episode >= self.max_episodes:
@@ -280,8 +434,15 @@ class DQNTestNode(Node):
 def main():
     rclpy.init()
     node = DQNTestNode()
-    rclpy.spin(node)  # Run ROS2 loop
-    rclpy.shutdown()
+    
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.get_logger().info('Testing interrupted by user')
+    finally:
+        if hasattr(node, 'fig'):
+            plt.close(node.fig)
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

@@ -1,0 +1,194 @@
+[0.035s] Invoking command in '/home/asad/turtlebot0/build/turtlebot3_gazebo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/asad/turtlebot0/install/turtlebot_dqn:/opt/ros/humble /usr/bin/cmake --build /home/asad/turtlebot0/build/turtlebot3_gazebo -- -j6 -l6
+[0.790s] -- Found ament_cmake: 1.3.11 (/opt/ros/humble/share/ament_cmake/cmake)
+[1.422s] [33mCMake Warning (dev) at /usr/share/cmake-3.22/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+[1.422s]   The package name passed to `find_package_handle_standard_args` (PkgConfig)
+[1.422s]   does not match the name of the calling package (gazebo).  This can lead to
+[1.422s]   problems in calling code that expects `find_package` result variables
+[1.422s]   (e.g., `_FOUND`) to follow a certain pattern.
+[1.423s] Call Stack (most recent call first):
+[1.423s]   /usr/share/cmake-3.22/Modules/FindPkgConfig.cmake:99 (find_package_handle_standard_args)
+[1.423s]   /usr/lib/x86_64-linux-gnu/cmake/gazebo/gazebo-config.cmake:72 (include)
+[1.423s]   CMakeLists.txt:23 (find_package)
+[1.423s] This warning is for project developers.  Use -Wno-dev to suppress it.
+[1.423s] [0m
+[1.768s] -- Found DART: /usr/include (Required is at least version "6.6") found components: dart 
+[2.131s] -- Found Protobuf: /usr/lib/x86_64-linux-gnu/libprotobuf.so (found version "3.12.4") 
+[2.159s] -- Looking for ignition-math6 -- found version 6.15.1
+[2.227s] -- Searching for dependencies of ignition-math6
+[2.251s] -- Looking for OGRE...
+[2.265s] -- Found Ogre Ghadamon (1.9.0)
+[2.270s] -- Found OGRE: optimized;/usr/lib/x86_64-linux-gnu/libOgreMain.so;debug;/usr/lib/x86_64-linux-gnu/libOgreMain.so
+[2.278s] -- Looking for OGRE_Paging...
+[2.278s] -- Found OGRE_Paging: optimized;/usr/lib/x86_64-linux-gnu/libOgrePaging.so;debug;/usr/lib/x86_64-linux-gnu/libOgrePaging.so
+[2.278s] -- Looking for OGRE_Terrain...
+[2.278s] -- Found OGRE_Terrain: optimized;/usr/lib/x86_64-linux-gnu/libOgreTerrain.so;debug;/usr/lib/x86_64-linux-gnu/libOgreTerrain.so
+[2.279s] -- Looking for OGRE_Property...
+[2.279s] -- Found OGRE_Property: optimized;/usr/lib/x86_64-linux-gnu/libOgreProperty.so;debug;/usr/lib/x86_64-linux-gnu/libOgreProperty.so
+[2.279s] -- Looking for OGRE_RTShaderSystem...
+[2.279s] -- Found OGRE_RTShaderSystem: optimized;/usr/lib/x86_64-linux-gnu/libOgreRTShaderSystem.so;debug;/usr/lib/x86_64-linux-gnu/libOgreRTShaderSystem.so
+[2.279s] -- Looking for OGRE_Volume...
+[2.279s] -- Found OGRE_Volume: optimized;/usr/lib/x86_64-linux-gnu/libOgreVolume.so;debug;/usr/lib/x86_64-linux-gnu/libOgreVolume.so
+[2.279s] -- Looking for OGRE_Overlay...
+[2.279s] -- Found OGRE_Overlay: optimized;/usr/lib/x86_64-linux-gnu/libOgreOverlay.so;debug;/usr/lib/x86_64-linux-gnu/libOgreOverlay.so
+[2.440s] -- Looking for ignition-math6 -- found version 6.15.1
+[2.464s] -- Looking for ignition-transport8 -- found version 8.2.1
+[2.464s] -- Searching for dependencies of ignition-transport8
+[2.494s] -- Found Protobuf: /usr/lib/x86_64-linux-gnu/libprotobuf.so (found suitable version "3.12.4", minimum required is "3") 
+[2.501s] -- Config-file not installed for ZeroMQ -- checking for pkg-config
+[2.505s] -- Checking for module 'libzmq >= 4'
+[2.608s] --   Found libzmq , version 4.3.4
+[2.638s] -- Checking for module 'uuid'
+[2.652s] --   Found uuid, version 2.37.2
+[2.684s] -- Looking for ignition-msgs5 -- found version 5.8.1
+[2.686s] -- Searching for dependencies of ignition-msgs5
+[2.700s] -- Looking for ignition-math6 -- found version 6.15.1
+[2.706s] -- Checking for module 'tinyxml2'
+[2.717s] --   Found tinyxml2, version 9.0.0
+[2.758s] -- Looking for ignition-msgs5 -- found version 5.8.1
+[2.779s] -- Looking for ignition-common3 -- found version 3.14.0
+[2.779s] -- Searching for dependencies of ignition-common3
+[2.780s] -- Looking for dlfcn.h - found
+[2.780s] -- Looking for libdl - found
+[2.802s] -- Searching for <ignition-common3> component [graphics]
+[2.807s] -- Looking for ignition-common3-graphics -- found version 3.14.0
+[2.808s] -- Searching for dependencies of ignition-common3-graphics
+[2.808s] -- Looking for ignition-math6 -- found version 6.15.1
+[2.824s] -- Looking for ignition-fuel_tools4 -- found version 4.4.0
+[2.824s] -- Searching for dependencies of ignition-fuel_tools4
+[2.896s] -- Checking for module 'jsoncpp'
+[2.907s] --   Found jsoncpp, version 1.9.5
+[2.936s] -- Checking for module 'libzip'
+[2.946s] --   Found libzip, version 1.7.3
+[2.969s] -- Looking for ignition-common3 -- found version 3.14.0
+[2.969s] -- Looking for ignition-math6 -- found version 6.15.1
+[2.970s] -- Looking for ignition-msgs5 -- found version 5.8.1
+[3.051s] -- Found gazebo_ros_pkgs: 3.9.0 (/opt/ros/humble/share/gazebo_ros_pkgs/cmake)
+[3.051s] -- Found geometry_msgs: 4.8.0 (/opt/ros/humble/share/geometry_msgs/cmake)
+[3.067s] -- Found rosidl_generator_c: 3.1.6 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[3.069s] -- Found rosidl_adapter: 3.1.6 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[3.074s] -- Found rosidl_generator_cpp: 3.1.6 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[3.082s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[3.093s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[3.126s] -- Found nav_msgs: 4.8.0 (/opt/ros/humble/share/nav_msgs/cmake)
+[3.141s] -- Found rclcpp: 16.0.12 (/opt/ros/humble/share/rclcpp/cmake)
+[3.162s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[3.163s] -- Found rmw_fastrtps_cpp: 6.2.7 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[3.240s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[3.273s] -- Found sensor_msgs: 4.8.0 (/opt/ros/humble/share/sensor_msgs/cmake)
+[3.289s] -- Found tf2: 0.25.12 (/opt/ros/humble/share/tf2/cmake)
+[3.349s] -- Configuring done
+[3.477s] -- Generating done
+[3.485s] -- Build files have been written to: /home/asad/turtlebot0/build/turtlebot3_gazebo
+[3.509s] [35m[1mConsolidate compiler generated dependencies of target turtlebot3_drive[0m
+[3.512s] [35m[1mConsolidate compiler generated dependencies of target obstacle1[0m
+[3.512s] [35m[1mConsolidate compiler generated dependencies of target obstacles[0m
+[3.514s] [35m[1mConsolidate compiler generated dependencies of target obstacle2[0m
+[3.528s] [ 25%] Built target turtlebot3_drive
+[3.806s] [100%] Built target obstacle1
+[3.806s] [100%] Built target obstacles
+[3.806s] [100%] Built target obstacle2
+[3.814s] Invoked command in '/home/asad/turtlebot0/build/turtlebot3_gazebo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/asad/turtlebot0/install/turtlebot_dqn:/opt/ros/humble /usr/bin/cmake --build /home/asad/turtlebot0/build/turtlebot3_gazebo -- -j6 -l6
+[3.815s] Invoking command in '/home/asad/turtlebot0/build/turtlebot3_gazebo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/asad/turtlebot0/install/turtlebot_dqn:/opt/ros/humble /usr/bin/cmake --install /home/asad/turtlebot0/build/turtlebot3_gazebo
+[3.821s] -- Install configuration: ""
+[3.822s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/lib/turtlebot3_gazebo/turtlebot3_drive
+[3.822s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/turtlebot3_world.launch.py
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/spawn_turtlebot3.launch.py
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/empty_world.launch.py
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/turtlebot3_dqn_stage4.launch.py
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/robot_state_publisher.launch.py
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/turtlebot3_dqn_stage3.launch.py
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/turtlebot3_house.launch.py
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/turtlebot3_dqn_stage2.launch.py
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//launch/turtlebot3_dqn_stage1.launch.py
+[3.822s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models
+[3.822s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world
+[3.822s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacles
+[3.822s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacles/model.config
+[3.835s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacles/model.sdf
+[3.835s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle2
+[3.835s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle2/model.config
+[3.843s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle2/model.sdf
+[3.843s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/model.config
+[3.843s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle_plugin
+[3.843s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle_plugin/obstacles.cc
+[3.843s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle_plugin/obstacle2.cc
+[3.843s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle_plugin/obstacle1.cc
+[3.844s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle_plugin/CMakeLists.txt
+[3.844s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle1
+[3.844s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle1/model.config
+[3.844s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/obstacle1/model.sdf
+[3.844s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/goal_box
+[3.844s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/goal_box/model.config
+[3.844s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/goal_box/model.sdf
+[3.844s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/inner_walls
+[3.844s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/inner_walls/model.config
+[3.844s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/inner_walls/model.sdf
+[3.845s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_dqn_world/model.sdf
+[3.845s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_waffle
+[3.845s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_waffle/model-1_4.sdf
+[3.845s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_waffle/model.config
+[3.845s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_waffle/model.sdf
+[3.845s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_world
+[3.845s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_world/model-1_4.sdf
+[3.845s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_world/model.config
+[3.846s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_world/meshes
+[3.846s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_world/meshes/wall.dae
+[3.846s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_world/meshes/hexagon.dae
+[3.846s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_world/model.sdf
+[3.846s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_waffle_pi
+[3.846s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_waffle_pi/model-1_4_.sdf
+[3.846s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_waffle_pi/model.config
+[3.846s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_waffle_pi/model.sdf
+[3.846s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_burger
+[3.846s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_burger/model-1_4.sdf
+[3.847s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_burger/model.config
+[3.847s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_burger/model.sdf
+[3.849s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common
+[3.849s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common/model.config
+[3.851s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common/meshes
+[3.851s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common/meshes/tire.dae
+[3.851s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common/meshes/lds.dae
+[3.851s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common/meshes/r200.dae
+[3.864s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common/meshes/waffle_base.dae
+[3.864s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common/meshes/waffle_pi_base.dae
+[3.864s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_common/meshes/burger_base.dae
+[3.864s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_house
+[3.865s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_house/model.config
+[3.865s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//models/turtlebot3_house/model.sdf
+[3.869s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//rviz
+[3.869s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//rviz/tb3_gazebo.rviz
+[3.869s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//urdf
+[3.870s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//urdf/turtlebot3_waffle_pi.urdf
+[3.870s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//urdf/turtlebot3_burger.urdf
+[3.870s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//urdf/turtlebot3_waffle.urdf
+[3.870s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//urdf/common_properties.urdf
+[3.871s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//worlds
+[3.871s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//worlds/turtlebot3_dqn_stage1.world
+[3.871s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//worlds/turtlebot3_dqn_stage3.world
+[3.871s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//worlds/turtlebot3_dqn_stage2.world
+[3.871s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//worlds/turtlebot3_house.world
+[3.871s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//worlds/turtlebot3_dqn_stage4.world
+[3.884s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//worlds/empty_world.world
+[3.885s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo//worlds/turtlebot3_world.world
+[3.885s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/include/
+[3.885s] -- Up-to-date: /home/asad/turtlebot0/install/turtlebot3_gazebo/include//turtlebot3_gazebo
+[3.885s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/include//turtlebot3_gazebo/turtlebot3_drive.hpp
+[3.890s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/ament_index/resource_index/package_run_dependencies/turtlebot3_gazebo
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/ament_index/resource_index/parent_prefix_path/turtlebot3_gazebo
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/environment/ament_prefix_path.sh
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/environment/ament_prefix_path.dsv
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/environment/path.sh
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/environment/path.dsv
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/local_setup.bash
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/local_setup.sh
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/local_setup.zsh
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/local_setup.dsv
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/package.dsv
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/ament_index/resource_index/packages/turtlebot3_gazebo
+[3.891s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/cmake/ament_cmake_export_include_directories-extras.cmake
+[3.892s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/cmake/ament_cmake_export_dependencies-extras.cmake
+[3.892s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/cmake/turtlebot3_gazeboConfig.cmake
+[3.892s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/cmake/turtlebot3_gazeboConfig-version.cmake
+[3.892s] -- Installing: /home/asad/turtlebot0/install/turtlebot3_gazebo/share/turtlebot3_gazebo/package.xml
+[3.893s] Invoked command in '/home/asad/turtlebot0/build/turtlebot3_gazebo' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/asad/turtlebot0/install/turtlebot_dqn:/opt/ros/humble /usr/bin/cmake --install /home/asad/turtlebot0/build/turtlebot3_gazebo
