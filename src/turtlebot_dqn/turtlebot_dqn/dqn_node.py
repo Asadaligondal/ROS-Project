@@ -204,7 +204,6 @@ class DQNNode(Node):
         """Update goal position"""
         self.goal_x = msg.x
         self.goal_y = msg.y
-
     def robot_position_callback(self, future):
         """Handle robot position response"""
         try:
@@ -372,11 +371,9 @@ class DQNNode(Node):
         self.done = False
         self.goal_reached = False
         
-        # Save model and plots periodically
+        # Save model periodically
         if self.episode > 0 and self.episode % 100 == 0:
             self.save_model()
-        if self.episode > 0 and self.episode % 10 == 0:
-            self.save_progress_plots()
         
         # Check if training is complete
         if self.episode >= self.max_episodes:
@@ -389,26 +386,6 @@ class DQNNode(Node):
         self.respawning = True
         self.reset_robot_position()
         self.reset_deadline = True
-
-    def save_progress_plots(self):
-        """Save training progress plots during training"""
-        if len(self.episode_rewards) < 10:
-            return
-            
-        plots_dir = os.path.expanduser('~/turtlebot0/progress_plots')
-        os.makedirs(plots_dir, exist_ok=True)
-        
-        # Rewards plot
-        plt.figure(figsize=(10, 6))
-        plt.plot(self.episode_rewards)
-        plt.title(f'Episode Rewards (Episode {self.episode})')
-        plt.xlabel('Episode')
-        plt.ylabel('Reward')
-        plt.grid(True)
-        plt.savefig(f'{plots_dir}/rewards_episode_{self.episode}.png', dpi=150, bbox_inches='tight')
-        plt.close()
-        
-        self.get_logger().info(f'Progress plot saved at episode {self.episode}')
 
     def reset_robot_position(self):
         """Reset the robot to a random starting position"""
@@ -513,9 +490,8 @@ class DQNNode(Node):
             self.reset_episode()
             return
         
-        # Update robot position
-        if self.step % 10 == 0:
-            self.update_robot_position()
+        # Update robot position every step for accurate goal calculations
+        self.update_robot_position()
         
         # Process LiDAR data into state
         current_state = self.preprocess_state(msg.ranges)
