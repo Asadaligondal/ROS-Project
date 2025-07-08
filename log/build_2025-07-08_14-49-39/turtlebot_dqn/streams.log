@@ -1,0 +1,28 @@
+[2.613s] Invoking command in '/home/asad/turtlebot0/src/turtlebot_dqn': PYTHONPATH=/home/asad/turtlebot0/build/turtlebot_dqn/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/turtlebot_dqn build --build-base /home/asad/turtlebot0/build/turtlebot_dqn/build install --record /home/asad/turtlebot0/build/turtlebot_dqn/install.log --single-version-externally-managed install_data
+[3.726s] running egg_info
+[3.729s] writing ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/PKG-INFO
+[3.730s] writing dependency_links to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/dependency_links.txt
+[3.732s] writing entry points to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/entry_points.txt
+[3.733s] writing requirements to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/requires.txt
+[3.735s] writing top-level names to ../../build/turtlebot_dqn/turtlebot_dqn.egg-info/top_level.txt
+[3.740s] reading manifest file '../../build/turtlebot_dqn/turtlebot_dqn.egg-info/SOURCES.txt'
+[3.745s] writing manifest file '../../build/turtlebot_dqn/turtlebot_dqn.egg-info/SOURCES.txt'
+[3.746s] running build
+[3.748s] running build_py
+[3.749s] copying turtlebot_dqn/My_testing_node.py -> /home/asad/turtlebot0/build/turtlebot_dqn/build/lib/turtlebot_dqn
+[3.751s] running install
+[3.753s] running install_lib
+[3.762s] copying /home/asad/turtlebot0/build/turtlebot_dqn/build/lib/turtlebot_dqn/My_testing_node.py -> /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn
+[3.773s] byte-compiling /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn/My_testing_node.py to My_testing_node.cpython-310.pyc
+[3.783s] running install_data
+[3.783s] running install_egg_info
+[3.794s] removing '/home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn-0.0.0-py3.10.egg-info' (and everything under it)
+[3.795s] Copying ../../build/turtlebot_dqn/turtlebot_dqn.egg-info to /home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages/turtlebot_dqn-0.0.0-py3.10.egg-info
+[3.800s] running install_scripts
+[3.880s] Installing My_testing_node.py script to /home/asad/turtlebot0/install/turtlebot_dqn/lib/turtlebot_dqn
+[3.882s] Installing bumper_reset_node script to /home/asad/turtlebot0/install/turtlebot_dqn/lib/turtlebot_dqn
+[3.885s] Installing custom_model script to /home/asad/turtlebot0/install/turtlebot_dqn/lib/turtlebot_dqn
+[3.886s] Installing dqn_node script to /home/asad/turtlebot0/install/turtlebot_dqn/lib/turtlebot_dqn
+[3.886s] Installing goal_publisher script to /home/asad/turtlebot0/install/turtlebot_dqn/lib/turtlebot_dqn
+[3.886s] writing list of installed files to '/home/asad/turtlebot0/build/turtlebot_dqn/install.log'
+[3.982s] Invoked command in '/home/asad/turtlebot0/src/turtlebot_dqn' returned '0': PYTHONPATH=/home/asad/turtlebot0/build/turtlebot_dqn/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/asad/turtlebot0/install/turtlebot_dqn/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/turtlebot_dqn build --build-base /home/asad/turtlebot0/build/turtlebot_dqn/build install --record /home/asad/turtlebot0/build/turtlebot_dqn/install.log --single-version-externally-managed install_data

@@ -14,12 +14,25 @@ import os
 import math
 import matplotlib.pyplot as plt
 
+# Constants to match training
+LIDAR_DISTANCE_CAP = 3.5
+GOAL_THRESHOLD = 0.20
+
 class DQNNetwork(nn.Module):
-    def __init__(self, input_size, output_size):
+    """DQN Network matching training architecture exactly"""
+    def __init__(self, input_size, output_size, hidden_size=512):
         super(DQNNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, output_size)
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc3 = nn.Linear(hidden_size, output_size)
+        
+        # Initialize weights
+        self.apply(self._init_weights)
+    
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            torch.nn.init.xavier_uniform_(m.weight)
+            torch.nn.init.constant_(m.bias, 0)
     
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -56,9 +69,9 @@ class DQNTestNode(Node):
             self.get_logger().info('Waiting for /gazebo/get_entity_state service...')
         
         # DQN setup - Match training model exactly
-        self.state_size = 10  # 8 lidar sectors + 2 goal info (distance + angle)
-        self.action_size = 4
-        self.dqn = DQNNetwork(self.state_size, self.action_size)
+        self.state_size = 362  # 360 lidar + 2 goal info (distance + angle)
+        self.action_size = 5
+        self.dqn = DQNNetwork(self.state_size, self.action_size, hidden_size=512)
         
         # Load pre-trained model
         model_path = os.path.expanduser('~/turtlebot0/dqn_model.pth')
@@ -71,12 +84,13 @@ class DQNTestNode(Node):
             rclpy.shutdown()
             return
         
-        # Actions - same as training
+        # Actions - exactly match training
         self.actions = [
-            (0.1, 0.0),   # Forward
-            (0.0, 0.5),   # Left
-            (0.0, -0.5),  # Right
-            (0.0, 0.0)    # Stop
+            [0.3, -1.0],  # Forward + Turn Left
+            [0.3, -0.5],  # Forward + Slight Left  
+            [1.0, 0.0],   # Forward Fast
+            [0.3, 0.5],   # Forward + Slight Right
+            [0.3, 1.0]    # Forward + Turn Right
         ]
         
         # Goal tracking variables - match training exactly
@@ -88,7 +102,7 @@ class DQNTestNode(Node):
         
         # Episode tracking
         self.max_episodes = 50
-        self.max_steps = 300
+        self.max_steps = 500  # Match training MAX_STEPS
         self.episode = 0
         self.step = 0
         self.total_reward = 0.0
@@ -138,23 +152,27 @@ class DQNTestNode(Node):
         twist.angular.z = 0.0
         self.vel_pub.publish(twist)
 
-    def preprocess_lidar(self, ranges):
-        """Process lidar data exactly the same as in training"""
-        sector_size = len(ranges) // 8
-        sectors = []
-        for i in range(8):
-            start = i * sector_size
-            end = (i + 1) * sector_size
-            sector = ranges[start:end]
-            # Handle inf values and cap at 5.0
-            valid_ranges = [r for r in sector if not math.isinf(r) and not math.isnan(r)]
-            if valid_ranges:
-                min_dist = min(valid_ranges)
-                min_dist = min(min_dist, 5.0)
-            else:
-                min_dist = 5.0
-            sectors.append(min_dist)
-        return np.array(sectors, dtype=np.float32)
+    def preprocess_state(self, ranges):
+        """Process full LiDAR data (360 readings) and goal information into state representation - exactly match training"""
+        # Process full LiDAR scan (360 readings)
+        lidar_data = np.array(ranges, dtype=np.float32)
+        
+        # Cap and normalize LiDAR values exactly like training
+        lidar_data = np.clip(lidar_data, 0, LIDAR_DISTANCE_CAP)
+        lidar_data = lidar_data / LIDAR_DISTANCE_CAP  # Normalize to [0, 1]
+        
+        # Calculate goal information
+        distance_to_goal = np.sqrt((self.goal_x - self.robot_x)**2 + (self.goal_y - self.robot_y)**2)
+        angle_to_goal = np.arctan2(self.goal_y - self.robot_y, self.goal_x - self.robot_x)
+        
+        # Normalize goal information exactly like training
+        distance_to_goal = min(distance_to_goal, 10.0) / 10.0  # Cap at 10m and normalize
+        angle_to_goal = angle_to_goal / np.pi  # Normalize to [-1, 1]
+        
+        # Combine LiDAR (360) + goal info (2) = 362 dimensional state
+        state = np.concatenate([lidar_data, [distance_to_goal, angle_to_goal]])
+        
+        return state
 
     def update_robot_position(self):
         """Update robot position from Gazebo (async)"""
@@ -180,66 +198,35 @@ class DQNTestNode(Node):
         except Exception as e:
             self.get_logger().error(f'Error in robot position callback: {e}')
 
-    def create_state(self, lidar_data):
-        """Create state vector that matches training exactly (8 lidar + 2 goal info)"""
-        if not self.position_updated or not self.goal_received:
-            # Return a default state if position/goal not available
-            return np.zeros(self.state_size, dtype=np.float32)
-        
-        # Calculate distance and angle to goal
-        dx = self.goal_x - self.robot_x
-        dy = self.goal_y - self.robot_y
-        distance_to_goal = math.sqrt(dx**2 + dy**2)
-        angle_to_goal = math.atan2(dy, dx)
-        
-        # Normalize goal information exactly like in training
-        normalized_distance = min(distance_to_goal / 5.0, 1.0)  # Normalize to [0, 1]
-        normalized_angle = angle_to_goal / math.pi  # Normalize to [-1, 1]
-        
-        # Combine lidar data with goal information
-        state = np.concatenate([
-            lidar_data,  # 8 elements
-            [normalized_distance, normalized_angle]  # 2 elements
-        ])
-        
-        return state.astype(np.float32)
-
     def choose_action(self, state):
         """Choose action based on the trained model (no exploration)"""
         with torch.no_grad():
             state_tensor = torch.from_numpy(state).float().unsqueeze(0)  # Add batch dimension
             q_values = self.dqn(state_tensor)
             action = q_values.argmax().item()
-            self.get_logger().info(f'action choosen {action}')
+            self.get_logger().info(f'Action chosen: {action}')
             return action
 
-    def calculate_reward(self, lidar_data):
+    def calculate_reward(self):
         """Calculate reward similar to training"""
-        # Base reward for staying alive
-        reward = 1.0
+        # Check for goal reached
+        distance_to_goal = np.sqrt((self.goal_x - self.robot_x)**2 + (self.goal_y - self.robot_y)**2)
         
-        # Progress toward goal reward
-        if self.position_updated and self.goal_received:
-            dx = self.goal_x - self.robot_x
-            dy = self.goal_y - self.robot_y
-            current_distance = math.sqrt(dx**2 + dy**2)
-            
-            if self.last_distance_to_goal is not None:
-                distance_reward = (self.last_distance_to_goal - current_distance) * 10.0
-                reward += distance_reward
-            
-            self.last_distance_to_goal = current_distance
-            
-            # Goal reached reward
-            if current_distance < 0.5:
-                reward += 100.0
-                self.get_logger().info(f'Episode {self.episode}: Goal reached!')
-                return reward, True  # Episode done
+        if distance_to_goal < GOAL_THRESHOLD:
+            self.get_logger().info(f'Episode {self.episode}: Goal reached!')
+            return 100.0, True  # Large reward for reaching goal, episode done
         
-        # Obstacle avoidance penalty
-        min_distance = min(lidar_data)
-        if min_distance < 0.5:
-            reward -= (0.5 - min_distance) * 20.0
+        # Distance-based reward (encourage moving toward goal)
+        reward = 0.0
+        if self.last_distance_to_goal is not None:
+            distance_change = self.last_distance_to_goal - distance_to_goal
+            reward += distance_change * 20.0  # Reward for getting closer
+        
+        # Update last distance
+        self.last_distance_to_goal = distance_to_goal
+        
+        # Small survival bonus
+        reward += 0.1
         
         return reward, False
 
@@ -331,7 +318,8 @@ class DQNTestNode(Node):
         if self.episode_steps:
             avg_steps = np.mean(self.episode_steps)
             avg_reward = np.mean(self.episode_rewards)
-            self.get_logger().info(f'Testing Summary: Avg Steps: {avg_steps:.2f}, Avg Reward: {avg_reward:.2f}')
+            success_rate = len([r for r in self.episode_rewards if r > 50]) / len(self.episode_rewards) * 100
+            self.get_logger().info(f'Testing Summary: Avg Steps: {avg_steps:.2f}, Avg Reward: {avg_reward:.2f}, Success Rate: {success_rate:.1f}%')
         
         plt.close(self.fig)
 
@@ -364,15 +352,12 @@ class DQNTestNode(Node):
         if self.episode >= self.max_episodes or not self.goal_received:
             return
         
-        # Process lidar data
-        lidar_data = self.preprocess_lidar(msg.ranges)
-        
-        # Create complete state (lidar + goal info)
-        self.current_state = self.create_state(lidar_data)
-        
-        # Skip if state is not properly initialized
-        if np.all(self.current_state == 0):
+        # Skip if position not updated yet
+        if not self.position_updated:
             return
+        
+        # Process LiDAR data into state exactly like training
+        self.current_state = self.preprocess_state(msg.ranges)
         
         # Choose action using trained model
         action_idx = self.choose_action(self.current_state)
@@ -385,7 +370,7 @@ class DQNTestNode(Node):
         self.vel_pub.publish(twist)
         
         # Calculate reward
-        reward, done = self.calculate_reward(lidar_data)
+        reward, done = self.calculate_reward()
         self.total_reward += reward
         self.step += 1
         
@@ -400,7 +385,8 @@ class DQNTestNode(Node):
         
         # Print progress every 50 steps
         if self.step % 50 == 0:
-            self.get_logger().info(f'Episode {self.episode}: Step {self.step}, Reward: {self.total_reward:.2f}')
+            distance_to_goal = np.sqrt((self.goal_x - self.robot_x)**2 + (self.goal_y - self.robot_y)**2)
+            self.get_logger().info(f'Episode {self.episode}: Step {self.step}, Reward: {self.total_reward:.2f}, Distance to goal: {distance_to_goal:.2f}')
 
     def bumper_callback(self, msg):
         """Handle collisions"""
