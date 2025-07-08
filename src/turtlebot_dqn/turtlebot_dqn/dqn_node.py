@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 
-# Constants following GitHub configuration
 ACTION_SIZE = 5
 HIDDEN_SIZE = 512
 BATCH_SIZE = 128
@@ -167,7 +166,7 @@ class DQNNode(Node):
         self.memory = ReplayBuffer(capacity=BUFFER_SIZE, state_size=self.state_size)
         
         # Episode tracking
-        self.max_episodes = 1500
+        self.max_episodes = 10000
         self.episode = 0
         self.step = 0
         self.total_step = 0  # Global step counter for target updates
