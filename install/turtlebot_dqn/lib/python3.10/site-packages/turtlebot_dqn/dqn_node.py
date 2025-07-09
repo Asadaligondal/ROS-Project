@@ -7,6 +7,7 @@ from geometry_msgs.msg import Twist, Pose
 from gazebo_msgs.msg import ContactsState, EntityState
 from gazebo_msgs.srv import SetEntityState, GetEntityState
 from rosgraph_msgs.msg import Clock
+from nav_msgs.msg import Odometry  # Added for odometry
 import numpy as np
 import torch
 import torch.nn as nn
@@ -41,6 +42,29 @@ EPISODE_TIMEOUT_SECONDS = 50
 
 # Actions following GitHub's POSSIBLE_ACTIONS
 POSSIBLE_ACTIONS = [[0.3, -1.0], [0.3, -0.5], [1.0, 0.0], [0.3, 0.5], [0.3, 1.0]]
+
+def euler_from_quaternion(quaternion):
+    """Convert quaternion to euler angles (roll, pitch, yaw)"""
+    x, y, z, w = quaternion.x, quaternion.y, quaternion.z, quaternion.w
+    
+    # Roll (x-axis rotation)
+    sinr_cosp = 2 * (w * x + y * z)
+    cosr_cosp = 1 - 2 * (x * x + y * y)
+    roll = math.atan2(sinr_cosp, cosr_cosp)
+    
+    # Pitch (y-axis rotation)
+    sinp = 2 * (w * y - z * x)
+    if abs(sinp) >= 1:
+        pitch = math.copysign(math.pi / 2, sinp)  # Use 90 degrees if out of range
+    else:
+        pitch = math.asin(sinp)
+    
+    # Yaw (z-axis rotation)
+    siny_cosp = 2 * (w * z + x * y)
+    cosy_cosp = 1 - 2 * (y * y + z * z)
+    yaw = math.atan2(siny_cosp, cosy_cosp)
+    
+    return roll, pitch, yaw
 
 class ReplayBuffer:
     """Efficient experience replay buffer with numpy arrays"""
@@ -125,20 +149,27 @@ class DQNNode(Node):
         self.goal_sub = self.create_subscription(
             Pose2D, '/goal_pose', self.goal_callback, qos)
         
+        # NEW: Odometry subscription for real-time position and heading
+        self.odom_sub = self.create_subscription(
+            Odometry, '/odom', self.odom_callback, qos)
+        
         # Goal and robot position tracking
         self.goal_x = 0.0
         self.goal_y = 0.0
         self.robot_x = 0.0
         self.robot_y = 0.0
+        self.robot_heading = 0.0  # NEW: Robot's current heading
+        self.goal_distance = 0.0   # NEW: Current distance to goal
+        self.goal_angle = 0.0      # NEW: Relative angle to goal
+        self.initial_distance_to_goal = 0.0  # NEW: For reward normalization
         self.last_distance_to_goal = None
         
-        # Gazebo services
-        self.get_entity_client = self.create_client(GetEntityState, '/gazebo/get_entity_state')
+        # Gazebo services (still needed for robot respawning)
         self.set_entity_client = self.create_client(SetEntityState, '/gazebo/set_entity_state')
         while not self.set_entity_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Waiting for /gazebo/set_entity_state service...')
         
-        # DQN setup - 360 LiDAR + goal_x + goal_y = 362 inputs
+        # DQN setup - 360 LiDAR + goal_distance + goal_angle = 362 inputs
         self.state_size = 362
         self.action_size = ACTION_SIZE
         
@@ -204,28 +235,33 @@ class DQNNode(Node):
         """Update goal position"""
         self.goal_x = msg.x
         self.goal_y = msg.y
-    def robot_position_callback(self, future):
-        """Handle robot position response"""
-        try:
-            response = future.result()
-            if response.success:
-                self.robot_x = response.state.pose.position.x
-                self.robot_y = response.state.pose.position.y
-            else:
-                self.get_logger().warn('Failed to get robot position')
-        except Exception as e:
-            self.get_logger().error(f'Error in robot position callback: {e}')
+        self.get_logger().info(f'New goal: x={self.goal_x:.2f}, y={self.goal_y:.2f}')
 
-    def update_robot_position(self):
-        """Update robot position from Gazebo (async)"""
-        if not self.get_entity_client.service_is_ready():
-            return
-            
-        request = GetEntityState.Request()
-        request.name = 'burger'
+    def odom_callback(self, msg):
+        """NEW: Real-time odometry callback for position and heading"""
+        # Update robot position
+        self.robot_x = msg.pose.pose.position.x
+        self.robot_y = msg.pose.pose.position.y
         
-        future = self.get_entity_client.call_async(request)
-        future.add_done_callback(self.robot_position_callback)
+        # Convert quaternion to euler angles to get heading
+        _, _, self.robot_heading = euler_from_quaternion(msg.pose.pose.orientation)
+        
+        # Calculate goal distance and relative angle (like GitHub implementation)
+        diff_x = self.goal_x - self.robot_x
+        diff_y = self.goal_y - self.robot_y
+        self.goal_distance = math.sqrt(diff_x**2 + diff_y**2)
+        
+        # Calculate heading to goal
+        heading_to_goal = math.atan2(diff_y, diff_x)
+        
+        # Calculate relative angle (how much robot needs to turn to face goal)
+        self.goal_angle = heading_to_goal - self.robot_heading
+        
+        # Normalize angle to [-π, π]
+        while self.goal_angle > math.pi:
+            self.goal_angle -= 2 * math.pi
+        while self.goal_angle < -math.pi:
+            self.goal_angle += 2 * math.pi
 
     def clock_callback(self, msg):
         """Track simulation time for episode timeouts"""
@@ -258,16 +294,15 @@ class DQNNode(Node):
         lidar_data = np.clip(lidar_data, 0, LIDAR_DISTANCE_CAP)
         lidar_data = lidar_data / LIDAR_DISTANCE_CAP  # Normalize to [0, 1]
         
-        # Calculate goal information
-        distance_to_goal = np.sqrt((self.goal_x - self.robot_x)**2 + (self.goal_y - self.robot_y)**2)
-        angle_to_goal = np.arctan2(self.goal_y - self.robot_y, self.goal_x - self.robot_x)
+        # NEW: Use goal distance and relative angle (from odometry)
+        # Normalize goal distance (cap at 10m like GitHub)
+        normalized_distance = min(self.goal_distance, 10.0) / 10.0
         
-        # Normalize goal information
-        distance_to_goal = min(distance_to_goal, 10.0) / 10.0  # Cap at 10m and normalize
-        angle_to_goal = angle_to_goal / np.pi  # Normalize to [-1, 1]
+        # Normalize goal angle (already in [-π, π], so divide by π)
+        normalized_angle = self.goal_angle / math.pi
         
         # Combine LiDAR (360) + goal info (2) = 362 dimensional state
-        state = np.concatenate([lidar_data, [distance_to_goal, angle_to_goal]])
+        state = np.concatenate([lidar_data, [normalized_distance, normalized_angle]])
         
         return state
 
@@ -325,29 +360,39 @@ class DQNNode(Node):
         
         return loss.item()
 
-    def calculate_reward(self, current_state):
-        """Calculate reward following simplified approach"""
-        reward = 0.0
+    def calculate_reward(self, action_linear, action_angular):
+        """NEW: GitHub-style reward function with multiple components"""
         
-        # Check for goal reached
-        distance_to_goal = np.sqrt((self.goal_x - self.robot_x)**2 + (self.goal_y - self.robot_y)**2)
-        
-        if distance_to_goal < GOAL_THRESHOLD:
+        # Check for goal reached first
+        if self.goal_distance < GOAL_THRESHOLD:
             self.goal_reached = True
-            return 100.0  # Large reward for reaching goal
+            return 2500.0  # Large success reward like GitHub
         
-        # Distance-based reward (encourage moving toward goal)
-        if self.last_distance_to_goal is not None:
-            distance_change = self.last_distance_to_goal - distance_to_goal
-            reward += distance_change * 20.0  # Reward for getting closer
+        # Goal angle reward (penalize not facing goal) - Range: [-π, 0]
+        r_yaw = -1.0 * abs(self.goal_angle)
         
-        # Update last distance
-        self.last_distance_to_goal = distance_to_goal
+        # Angular velocity penalty (penalize excessive turning) - Range: [-4, 0]
+        r_vangular = -1.0 * (action_angular ** 2)
         
-        # Small survival bonus
-        reward += 0.1
+        # Distance progress reward using GitHub formula - Range: [-1, 1]
+        if self.initial_distance_to_goal > 0:
+            r_distance = (2 * self.initial_distance_to_goal) / (self.initial_distance_to_goal + self.goal_distance) - 1
+        else:
+            r_distance = 0.0
+        
+        # Linear velocity penalty (encourage moving forward) - Range: [-9.68, 0]
+        r_vlinear = -1.0 * (((0.22 - action_linear) * 10) ** 2)
+        
+        # Combine all rewards with base penalty
+        reward = r_yaw + r_distance + r_vangular + r_vlinear - 1.0
         
         return reward
+
+    def initialize_episode(self):
+        """NEW: Initialize episode with goal distance storage"""
+        self.initial_distance_to_goal = self.goal_distance
+        self.last_distance_to_goal = self.goal_distance
+        self.get_logger().info(f'Episode {self.episode}: Initial distance to goal: {self.initial_distance_to_goal:.2f}m')
 
     def reset_episode(self):
         """Reset environment for a new episode"""
@@ -368,6 +413,7 @@ class DQNNode(Node):
         self.last_state = None
         self.last_action = None
         self.last_distance_to_goal = None
+        self.initial_distance_to_goal = 0.0
         self.done = False
         self.goal_reached = False
         
@@ -428,15 +474,17 @@ class DQNNode(Node):
                 self.respawning = False
             else:
                 self.stop_robot()
-                # Create a one-shot timer to enable collision detection after a delay
+                # Create a one-shot timer to enable collision detection and initialize episode
                 self.respawn_timer = self.create_timer(1.0, self.enable_collision_detection)
         except Exception as e:
             self.get_logger().error(f'Robot position reset failed: {e}')
             self.respawning = False
 
     def enable_collision_detection(self):
-        """Re-enable collision detection after respawn"""
+        """Re-enable collision detection after respawn and initialize episode"""
         self.respawning = False
+        # NEW: Initialize episode after robot is repositioned
+        self.initialize_episode()
         if hasattr(self, 'respawn_timer') and self.respawn_timer:
             self.respawn_timer.cancel()
             self.respawn_timer = None
@@ -467,6 +515,7 @@ class DQNNode(Node):
             f'Total Steps: {self.total_step}, '
             f'Reward: {self.total_reward:.2f}, '
             f'Epsilon: {self.epsilon:.3f}, '
+            f'Distance to Goal: {self.goal_distance:.2f}m, '
             f'Buffer: {len(self.memory)}'
         )
 
@@ -490,10 +539,7 @@ class DQNNode(Node):
             self.reset_episode()
             return
         
-        # Update robot position every step for accurate goal calculations
-        self.update_robot_position()
-        
-        # Process LiDAR data into state
+        # Process LiDAR data into state (now using odometry-based goal info)
         current_state = self.preprocess_state(msg.ranges)
         self.current_state = current_state
         
@@ -509,12 +555,12 @@ class DQNNode(Node):
         
         # Add experience to replay buffer and train
         if self.last_state is not None and not self.done:
-            # Calculate reward
-            reward = self.calculate_reward(current_state)
+            # NEW: Calculate reward with action information and multiple components
+            reward = self.calculate_reward(linear_x, angular_z)
             
             # Check for goal reached
             if self.goal_reached:
-                self.get_logger().info(f'Episode {self.episode}: Goal reached at step {self.step}')
+                self.get_logger().info(f'Episode {self.episode}: Goal reached at step {self.step}! Distance was {self.goal_distance:.2f}m')
                 self.memory.add(self.last_state, self.last_action, reward, current_state, True)
                 self.total_reward += reward
                 self.done = True
@@ -553,16 +599,16 @@ class DQNNode(Node):
         if len(msg.states) > 0 and self.last_state is not None:
             self.get_logger().info(f'Episode {self.episode}: Collision detected at step {self.step}')
             
-            # Add collision transition with negative reward
+            # NEW: Large collision penalty like GitHub
             self.memory.add(
                 self.last_state,
                 self.last_action,
-                -100.0,  # Large negative reward for collision
+                -2000.0,  # Much larger penalty like GitHub
                 self.current_state if self.current_state is not None else self.last_state,
                 True
             )
             
-            self.total_reward -= 100.0
+            self.total_reward -= 2000.0
             self.done = True
             self.reset_episode()
 
