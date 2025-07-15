@@ -164,7 +164,7 @@ class DQNNode(Node):
         self.max_episodes = 10
         self.episode = 0
         self.step = 0
-        self.total_step = 0
+        self.total_step = 0 
         self.total_reward = 0.0
         self.current_state = None
         self.last_state = None
@@ -420,10 +420,10 @@ class DQNNode(Node):
         metrics_path = os.path.expanduser('~/turtlebot0/dqn_metrics.npz')
         np.savez(
             metrics_path,
-            steps=np.array(self.episode_steps),
-            rewards=np.array(self.episode_rewards),
-            losses=np.array(self.losses)
-        )
+            rewards=self.episode_rewards,
+            success_count=self.success_count,
+            collision_count=self.collision_count,
+            timeout_count=self.timeout_count)
         self.get_logger().info(f'Metrics saved to {metrics_path}')
 
     def save_checkpoint(self):
