@@ -161,7 +161,7 @@ class DQNNode(Node):
         self.memory = ReplayBuffer(capacity=BUFFER_SIZE, state_size=self.state_size)
         
         # Episode tracking
-        self.max_episodes = 10000
+        self.max_episodes = 10
         self.episode = 0
         self.step = 0
         self.total_step = 0
@@ -409,26 +409,22 @@ class DQNNode(Node):
         self.respawning = False
         self.initial_distance_to_goal = self.goal_distance
 
+    
     def save_model(self):
-        """Save model and performance data"""
-        model_path = os.path.join(self.log_dir, f'dqn_model_ep{self.episode}.pth')
-        torch.save({
-            'episode': self.episode,
-            'model_state_dict': self.dqn.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'epsilon': self.epsilon,
-            'total_steps': self.total_step,
-        }, model_path)
+        """Save the trained model and metrics"""
+        model_path = os.path.expanduser('~/turtlebot0/dqn_model.pth')
+        torch.save(self.dqn.state_dict(), model_path)
+        self.get_logger().info(f'Model saved to {model_path}')
         
-        # Save performance metrics
-        metrics_path = os.path.join(self.log_dir, f'metrics_ep{self.episode}.npz')
-        np.savez(metrics_path,
-                 rewards=self.episode_rewards,
-                 success_count=self.success_count,
-                 collision_count=self.collision_count,
-                 timeout_count=self.timeout_count)
-        
-        self.get_logger().info(f'Model saved: {model_path}')
+        # Save metrics
+        metrics_path = os.path.expanduser('~/turtlebot0/dqn_metrics.npz')
+        np.savez(
+            metrics_path,
+            steps=np.array(self.episode_steps),
+            rewards=np.array(self.episode_rewards),
+            losses=np.array(self.losses)
+        )
+        self.get_logger().info(f'Metrics saved to {metrics_path}')
 
     def save_checkpoint(self):
         """Periodic checkpoint save"""

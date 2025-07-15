@@ -1,0 +1,4 @@
+[0.106s] Invoking command in '/home/asad/turtlebot0/build/turtlebot3_gazebo': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/asad/turtlebot0/install/turtlebot_dqn:/opt/ros/humble /usr/bin/cmake --build /home/asad/turtlebot0/build/turtlebot3_gazebo -- -j4 -l4
+[0.309s] gmake[2]: *** [CMakeFiles/turtlebot3_drive.dir/build.make:195: CMakeFiles/turtlebot3_drive.dir/depend] Interrupt
+[0.320s] gmake[1]: *** [CMakeFiles/Makefile2:142: CMakeFiles/turtlebot3_drive.dir/all] Interrupt
+[0.324s] gmake: *** [Makefile:146: all] Interrupt
