@@ -161,7 +161,7 @@ class DQNNode(Node):
         self.memory = ReplayBuffer(capacity=BUFFER_SIZE, state_size=self.state_size)
         
         # Episode tracking
-        self.max_episodes = 10
+        self.max_episodes = 25000
         self.episode = 0
         self.step = 0
         self.total_step = 0 
