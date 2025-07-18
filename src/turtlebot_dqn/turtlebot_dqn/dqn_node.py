@@ -26,8 +26,17 @@ BATCH_SIZE = 128
 BUFFER_SIZE = 1000000
 DISCOUNT_FACTOR = 0.99
 LEARNING_RATE = 0.003
-OBSERVE_STEPS = 25000
-EPSILON_DECAY = 0.9995
+# OBSERVE_STEPS = 25000
+# EPSILON_DECAY = 0.9995
+
+OBSERVE_RATIO = 0.1  # 10% of episodes for observation
+TOTAL_EPISODES = 25000  # Set this to your actual episode count
+
+# Calculate dynamic values
+OBSERVE_STEPS = int(OBSERVE_RATIO * TOTAL_EPISODES)
+EPSILON_DECAY = (0.05 / 1.0) ** (1.0 / (TOTAL_EPISODES - OBSERVE_STEPS))
+
+
 EPSILON_MINIMUM = 0.05
 TARGET_UPDATE_FREQUENCY = 1000
 
@@ -352,7 +361,7 @@ class DQNNode(Node):
         # Decay epsilon after observation phase
         if self.total_step >= self.observe_steps and self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
-        
+            self.get_logger().info(f'EPSILON: {self.epsilon}')
         # Reset episode variables
         self.episode += 1
         self.step = 0
